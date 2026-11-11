@@ -25,9 +25,17 @@ jobs:
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
       - name: Decode keystore
-        run: echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+        # Tolerate line wraps and stray whitespace from copy-pasting the base64, then prove the
+        # file opens with the given password so a bad secret fails here with a clear message.
+        run: |
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | tr -d '\r\n\t ' | base64 -d -i > "$RUNNER_TEMP/release.jks"
+          ls -l "$RUNNER_TEMP/release.jks"
+          keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$RELEASE_KEYSTORE_PASSWORD" -alias "$RELEASE_KEY_ALIAS" >/dev/null \
+            || { echo "::error::Keystore did not decode or the password/alias is wrong"; exit 1; }
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
       - name: Build signed release
         run: ./gradlew --no-daemon assembleRelease testDebugUnitTest
         env:
