@@ -13,20 +13,22 @@ You should have received a copy of the GNU General Public License along with thi
 package io.github.hate9.catlauncher.ui
 
 import android.content.Intent
+import android.os.Looper
+import android.os.Handler
+import android.app.WallpaperManager
+import android.app.WallpaperColors
 import android.content.pm.ShortcutInfo
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -58,6 +60,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -70,6 +75,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -83,6 +89,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -184,13 +191,9 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
         }
     }
 
-    val scrim = if (isSystemInDarkTheme()) Color.Black.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.35f)
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(scrim)
-    ) {
+    val darkText = rememberWallpaperDarkText()
+    CompositionLocalProvider(LocalDarkText provides darkText) {
+    Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             SearchBar(
                 query = query,
@@ -203,7 +206,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
             )
             LazyColumn(
                 state = listState,
-                flingBehavior = rememberHeaderSnapFlingBehavior(listState) { !drag.isActive && query.isBlank() },
+                flingBehavior = rememberHeaderSnapFlingBehavior(listState, headerTopGapPx = with(density) { HEADER_TOP_GAP.toPx() }) { !drag.isActive && query.isBlank() },
                 contentPadding = PaddingValues(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
                 modifier = Modifier
                     .weight(1f)
@@ -243,9 +246,9 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                             )
                         }
                         Row.Footer -> Column {
-                            Spacer(Modifier.height(24.dp))
-                            HorizontalDivider()
-                            Spacer(Modifier.height(48.dp))
+                            Spacer(Modifier.height(HEADER_TOP_GAP))
+                            HorizontalDivider(color = launcherTextColor().copy(alpha = 0.4f))
+                            Spacer(Modifier.height(32.dp))
                         }
                     }
                 }
@@ -283,9 +286,55 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
             SettingsSheet(config, vm.repository, widgets, onDismiss = { settingsOpen = false })
         }
     }
+    }
 }
 
 private const val UNCATEGORIZED_LABEL = "Uncategorized"
+
+/** Left inset shared by headers and rows. */
+private val ROW_INSET = 16.dp
+
+/** Gap between a category's last row and the next header's divider; the snap target skips it. */
+private val HEADER_TOP_GAP = 6.dp
+
+/**
+ * No scrim over the wallpaper, so text colour follows the wallpaper rather than the theme: the
+ * system's WallpaperColors say whether dark text is readable on it (API 27+). A soft shadow in
+ * the opposite colour covers busy regions.
+ */
+@Composable
+private fun rememberWallpaperDarkText(): Boolean {
+    val context = LocalContext.current
+    val fallback = !isSystemInDarkTheme()
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O_MR1) return fallback
+    var darkText by remember { mutableStateOf(fallback) }
+    DisposableEffect(context) {
+        val wm = WallpaperManager.getInstance(context)
+        fun read() {
+            val colors = runCatching { wm.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }.getOrNull()
+            if (colors != null) darkText = colors.colorHints and WallpaperColors.HINT_SUPPORTS_DARK_TEXT != 0
+        }
+        read()
+        val listener = WallpaperManager.OnColorsChangedListener { _, which -> if (which and WallpaperManager.FLAG_SYSTEM != 0) read() }
+        wm.addOnColorsChangedListener(listener, Handler(Looper.getMainLooper()))
+        onDispose { wm.removeOnColorsChangedListener(listener) }
+    }
+    return darkText
+}
+
+private val LocalDarkText = compositionLocalOf { true }
+
+@Composable
+private fun launcherTextColor(): Color = if (LocalDarkText.current) Color(0xFF1A1A1A) else Color.White
+
+@Composable
+private fun launcherTextStyle(): TextStyle = TextStyle(
+    shadow = Shadow(
+        color = (if (LocalDarkText.current) Color.White else Color.Black).copy(alpha = 0.7f),
+        offset = Offset(0f, 1f),
+        blurRadius = 6f,
+    )
+)
 
 /**
  * Runs in the Initial pass so, once a row has armed the drag controller via its long click,
@@ -349,20 +398,20 @@ private fun HeaderRow(row: Row.Header, modifier: Modifier, onLongClick: (Offset)
         modifier
             .fillMaxWidth()
             .onGloballyPositioned { origin = it.positionInRoot(); height = it.size.height }
-            .combinedClickable(onClick = {}, onLongClick = { onLongClick(Offset(origin.x + with(density) { 48.dp.toPx() }, origin.y + height)) })
+            .combinedClickable(onClick = {}, onLongClick = { onLongClick(Offset(origin.x + with(density) { ROW_INSET.toPx() }, origin.y + height)) })
     ) {
-        if (!row.first) Spacer(Modifier.height(24.dp))
-        HorizontalDivider()
-        Spacer(Modifier.height(32.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            Text(
-                text = row.category.name,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(HEADER_TOP_GAP))
+        HorizontalDivider(color = launcherTextColor().copy(alpha = 0.4f))
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = row.category.name,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = launcherTextColor(),
+            style = launcherTextStyle(),
+            modifier = Modifier.padding(horizontal = ROW_INSET),
+        )
+        Spacer(Modifier.height(2.dp))
     }
 }
 
@@ -378,17 +427,17 @@ private fun EntryRow(row: Row.Entry, showIcon: Boolean, modifier: Modifier, onCl
             .onGloballyPositioned { origin = it.positionInRoot(); height = it.size.height }
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = { onLongClick(Offset(origin.x + with(density) { 48.dp.toPx() }, origin.y + height)) },
+                onLongClick = { onLongClick(Offset(origin.x + with(density) { ROW_INSET.toPx() }, origin.y + height)) },
             )
-            .padding(horizontal = 48.dp, vertical = 10.dp),
+            .padding(horizontal = ROW_INSET, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showIcon) {
             if (row.icon != null) Image(bitmap = row.icon, contentDescription = null, modifier = Modifier.size(LauncherViewModel.ICON_DP.dp))
             else Spacer(Modifier.size(LauncherViewModel.ICON_DP.dp))
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(12.dp))
         }
-        Text(text = row.label, fontSize = 20.sp, color = MaterialTheme.colorScheme.onBackground, maxLines = 1)
+        Text(text = row.label, fontSize = 20.sp, color = launcherTextColor(), style = launcherTextStyle(), maxLines = 1)
     }
 }
 

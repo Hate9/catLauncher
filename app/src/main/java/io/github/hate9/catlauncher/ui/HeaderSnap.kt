@@ -25,8 +25,8 @@ import kotlin.math.abs
  * top of the viewport. With no header in view the list stays where the fling left it.
  */
 @Composable
-fun rememberHeaderSnapFlingBehavior(state: LazyListState, enabled: () -> Boolean): FlingBehavior {
-    val provider = remember(state) {
+fun rememberHeaderSnapFlingBehavior(state: LazyListState, headerTopGapPx: Float, enabled: () -> Boolean): FlingBehavior {
+    val provider = remember(state, headerTopGapPx) {
         object : SnapLayoutInfoProvider {
             override fun calculateApproachOffset(velocity: Float, decayOffset: Float): Float = decayOffset
 
@@ -40,8 +40,11 @@ fun rememberHeaderSnapFlingBehavior(state: LazyListState, enabled: () -> Boolean
                     val key = item.key as? String ?: continue
                     // Headers snap, and so does the very start of the list so the widget area
                     // above the first header stays reachable.
-                    if (!key.startsWith("h:") && item.index != 0) continue
-                    val distance = (item.offset - start).toFloat()
+                    val isHeader = key.startsWith("h:")
+                    if (!isHeader && item.index != 0) continue
+                    // Land the divider at the top, not the breathing room above it.
+                    val target = item.offset + if (isHeader) headerTopGapPx else 0f
+                    val distance = target - start
                     if (distance <= 0f && distance > lower) lower = distance
                     if (distance >= 0f && distance < upper) upper = distance
                 }

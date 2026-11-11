@@ -267,6 +267,6 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     companion object {
         private const val TAG = "LauncherViewModel"
-        const val ICON_DP = 40
+        const val ICON_DP = 28
     }
 }
