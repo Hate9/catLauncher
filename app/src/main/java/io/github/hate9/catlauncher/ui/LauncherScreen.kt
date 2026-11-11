@@ -98,6 +98,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import io.github.hate9.catlauncher.data.Category
+import io.github.hate9.catlauncher.data.FAVORITES_ID
+import io.github.hate9.catlauncher.data.HIDDEN_ID
 import io.github.hate9.catlauncher.data.ItemRef
 import io.github.hate9.catlauncher.data.UNCATEGORIZED_ID
 import io.github.hate9.catlauncher.widgets.WidgetController
@@ -159,6 +161,12 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
     // Filtering rebuilds the list from the top; without this the widget rows re-inserted above
     // the anchored first header would land out of sight when the query is cleared.
     LaunchedEffect(query) { listState.scrollToItem(0) }
+
+    // When a block appears above a list that is sitting at the top (first favorite, first widget),
+    // LazyColumn keeps the old first row anchored and hides the new one; stay at the top instead.
+    LaunchedEffect(shown.firstOrNull()?.key) {
+        if (listState.firstVisibleItemIndex <= 1 && listState.firstVisibleItemScrollOffset == 0) listState.scrollToItem(0)
+    }
 
     // A category created from a menu is inserted above the viewport; bring it into view.
     var scrollToKey by remember { mutableStateOf<String?>(null) }
@@ -549,7 +557,11 @@ private fun ItemMenu(vm: LauncherViewModel, row: Row.Entry, onClose: () -> Unit,
         }
         if (shortcuts.isNotEmpty()) HorizontalDivider()
     }
-    MenuItem("Move to category…") { onDialog(DialogState.MoveTo(row)); onClose() }
+    val favorite = row.item.favoritedAt != null
+    val hidden = row.item.hiddenAt != null
+    MenuItem(if (favorite) "Remove from favorites" else "Add to favorites") { vm.repository.setFavorite(row.item.id, !favorite); onClose() }
+    MenuItem(if (hidden) "Unhide" else "Hide") { vm.repository.setHidden(row.item.id, !hidden); onClose() }
+    if (row.block == null) MenuItem("Move to category…") { onDialog(DialogState.MoveTo(row)); onClose() }
     MenuItem("Change icon…") { onDialog(DialogState.ChangeIcon(row)); onClose() }
     if (ref !is ItemRef.IntentShortcut) MenuItem("App info") { vm.repository.apps.openAppInfo(ref); onClose() }
     when (ref) {
@@ -568,6 +580,14 @@ private fun HeaderMenu(vm: LauncherViewModel, categories: List<Category>, catego
     val movable = categories.filter { !it.isUncategorized }
     val index = movable.indexOfFirst { it.id == category.id }
     MenuTitle(category.name)
+    if (category.id == FAVORITES_ID) {
+        MenuItem("Starred apps appear here as well as in their category.", enabled = false) {}
+        return
+    }
+    if (category.id == HIDDEN_ID) {
+        MenuItem("Hidden apps; turn off \"Show hidden\" in settings to tuck them away.", enabled = false) {}
+        return
+    }
     if (!category.isUncategorized) {
         MenuItem("Rename…") { onDialog(DialogState.Rename(category)); onClose() }
         MenuItem("Move up", enabled = index > 0) { vm.repository.moveCategory(category.id, -1); onClose() }

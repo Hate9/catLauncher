@@ -30,6 +30,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.hate9.catlauncher.LauncherApp
 import io.github.hate9.catlauncher.data.Category
+import io.github.hate9.catlauncher.data.FAVORITES_ID
+import io.github.hate9.catlauncher.data.FAVORITES_NAME
+import io.github.hate9.catlauncher.data.HIDDEN_ID
+import io.github.hate9.catlauncher.data.HIDDEN_NAME
 import io.github.hate9.catlauncher.data.FlatEntry
 import io.github.hate9.catlauncher.data.Item
 import io.github.hate9.catlauncher.data.ItemRef
@@ -59,8 +63,14 @@ sealed interface Row {
         override val key get() = "h:${category.id}"
     }
 
-    data class Entry(val item: Item, val categoryId: String, val label: String, val icon: ImageBitmap?) : Row {
-        override val key get() = "i:${item.id}"
+    /**
+     * [block] is null for a row inside its real category, or FAVORITES_ID / HIDDEN_ID for the copy
+     * shown in a virtual block; those reorder only among themselves.
+     */
+    data class Entry(val item: Item, val categoryId: String, val label: String, val icon: ImageBitmap?, val block: String? = null) : Row {
+        val inFavorites get() = block == FAVORITES_ID
+        val inHidden get() = block == HIDDEN_ID
+        override val key get() = when (block) { FAVORITES_ID -> "f:"; HIDDEN_ID -> "x:"; else -> "i:" } + item.id
     }
 
     data object Footer : Row {
@@ -169,17 +179,33 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val out = ArrayList<Row>()
         if (q.isEmpty()) cfg.widgets.forEach { out += Row.Widget(it) }
         var first = true
-        for (category in cfg.categories) {
-            val entries = category.items.mapNotNull { item ->
-                val r = res[item.id]
-                val label = r?.label ?: item.label ?: item.ref.packageName
-                if (q.isNotEmpty() && !label.contains(q, ignoreCase = true)) null
-                else Row.Entry(item, category.id, label, r?.icon)
+        fun labelOf(item: Item) = res[item.id]?.label ?: item.label ?: item.ref.packageName
+        fun matches(item: Item) = q.isEmpty() || labelOf(item).contains(q, ignoreCase = true)
+        fun visible(item: Item) = item.hiddenAt == null
+
+        if (q.isEmpty()) {
+            val favorites = cfg.allItems().filter { it.favoritedAt != null && visible(it) }.sortedBy { it.favoritedAt }.toList()
+            if (favorites.isNotEmpty()) {
+                out += Row.Header(Category(FAVORITES_ID, FAVORITES_NAME, items = favorites), first = true)
+                first = false
+                favorites.forEach { out += Row.Entry(it, FAVORITES_ID, labelOf(it), res[it.id]?.icon, block = FAVORITES_ID) }
             }
+        }
+        for (category in cfg.categories) {
+            val entries = category.items.filter { visible(it) && matches(it) }
+                .map { Row.Entry(it, category.id, labelOf(it), res[it.id]?.icon) }
             if (q.isNotEmpty() && entries.isEmpty()) continue
             out += Row.Header(category, first)
             first = false
             out += entries
+        }
+        // Hidden items always answer a search, in their own block at the end; otherwise only on request.
+        if (cfg.showHidden || q.isNotEmpty()) {
+            val hidden = cfg.allItems().filter { it.hiddenAt != null && matches(it) }.sortedBy { it.hiddenAt }.toList()
+            if (hidden.isNotEmpty()) {
+                out += Row.Header(Category(HIDDEN_ID, HIDDEN_NAME, items = hidden), first = false)
+                hidden.forEach { out += Row.Entry(it, HIDDEN_ID, labelOf(it), res[it.id]?.icon, block = HIDDEN_ID) }
+            }
         }
         if (q.isEmpty()) out += Row.Footer
         return out
@@ -191,7 +217,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- drag ---------------------------------------------------------------------------------
 
-    fun beginDrag() {
+    private var dragKey: String? = null
+
+    fun beginDrag(key: String) {
+        dragKey = key
         dragRows = rows.value
     }
 
@@ -204,9 +233,18 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val list = dragRows?.toMutableList() ?: return false
         if (from !in list.indices || to !in list.indices || from == to) return false
         if (list[from].key != key) return false
-        val firstHeader = list.indexOfFirst { it is Row.Header }
-        if (to <= firstHeader) return false
-        if (list[to] !is Row.Entry && list[to] !is Row.Header) return false
+        val firstReal = list.indexOfFirst { it is Row.Header && it.category.id != FAVORITES_ID && it.category.id != HIDDEN_ID }
+        val hiddenHeader = list.indexOfFirst { it is Row.Header && it.category.id == HIDDEN_ID }.let { if (it < 0) list.size else it }
+        val dragged = list[from]
+        val target = list[to]
+        if (dragged is Row.Entry && dragged.block != null) {
+            // Virtual blocks reorder among themselves only.
+            if (target !is Row.Entry || target.block != dragged.block) return false
+        } else {
+            // Nothing else may land above the first real category or in the Hidden block.
+            if (to <= firstReal || to >= hiddenHeader) return false
+            if (target !is Row.Entry && target !is Row.Header) return false
+        }
         list.add(to, list.removeAt(from))
         dragRows = list
         return true
@@ -219,13 +257,19 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         pendingCommitKeys = list.map { it.key }
-        repository.applyFlatOrder(list.mapNotNull {
-            when (it) {
-                is Row.Header -> FlatEntry.CategoryStart(it.category.id)
-                is Row.Entry -> FlatEntry.ItemEntry(it.item.id)
-                else -> null
-            }
-        })
+        when {
+            dragKey?.startsWith("f:") == true ->
+                repository.applyFavoritesOrder(list.filterIsInstance<Row.Entry>().filter { it.inFavorites }.map { it.item.id })
+            dragKey?.startsWith("x:") == true ->
+                repository.applyHiddenOrder(list.filterIsInstance<Row.Entry>().filter { it.inHidden }.map { it.item.id })
+            else -> repository.applyFlatOrder(list.mapNotNull {
+                when (it) {
+                    is Row.Header -> if (it.category.id == FAVORITES_ID || it.category.id == HIDDEN_ID) null else FlatEntry.CategoryStart(it.category.id)
+                    is Row.Entry -> if (it.block != null) null else FlatEntry.ItemEntry(it.item.id)
+                    else -> null
+                }
+            })
+        }
         viewModelScope.launch {
             // Safety net: if the rebuilt rows never match (item vanished mid-drag), stop showing the copy.
             delay(500)

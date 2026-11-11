@@ -31,7 +31,7 @@ class DragController(
     private val listState: LazyListState,
     private val thresholdPx: Float,
     private val edgePx: Float,
-    private val onBegin: () -> Unit,
+    private val onBegin: (key: String) -> Unit,
     private val onMove: (key: String, from: Int, to: Int) -> Boolean,
     private val onEnd: (commit: Boolean) -> Unit,
     private val onDragStarted: () -> Unit,
@@ -80,7 +80,7 @@ class DragController(
         startOffset = info.offset
         startSize = info.size
         delta = armedPointerTravel.y
-        onBegin()
+        onBegin(pending)
         onDragStarted()
         settle()
     }

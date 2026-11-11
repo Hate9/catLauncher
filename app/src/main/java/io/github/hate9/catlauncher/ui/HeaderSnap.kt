@@ -14,7 +14,10 @@ package io.github.hate9.catlauncher.ui
 
 import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.gestures.snapping.snapFlingBehavior
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
@@ -120,5 +123,13 @@ fun rememberHeaderSnapFlingBehavior(
             }
         }
     }
-    return rememberSnapFlingBehavior(provider)
+    // The default snap spring inherits the fling's leftover velocity and overshoots; a tween does not.
+    val decay = rememberSplineBasedDecay<Float>()
+    return remember(provider, decay) {
+        snapFlingBehavior(
+            snapLayoutInfoProvider = provider,
+            decayAnimationSpec = decay,
+            snapAnimationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+        )
+    }
 }

@@ -173,6 +173,31 @@ class LauncherRepository(context: Context) {
     fun removeWidget(appWidgetId: Int) = update { cfg -> cfg.copy(widgets = cfg.widgets.filter { it.appWidgetId != appWidgetId }) }
     fun setShowIcons(show: Boolean) = update { it.copy(showIcons = show) }
     fun setIconPack(packageName: String?) = update { it.copy(iconPack = packageName) }
+    fun setFavorite(itemId: String, favorite: Boolean) = update { cfg ->
+        val stamp = if (favorite) System.currentTimeMillis() else null
+        cfg.copy(categories = cfg.categories.map { c -> c.copy(items = c.items.map { if (it.id == itemId) it.copy(favoritedAt = stamp) else it }) })
+    }
+    fun setHidden(itemId: String, hidden: Boolean) = update { cfg ->
+        val stamp = if (hidden) System.currentTimeMillis() else null
+        cfg.copy(categories = cfg.categories.map { c -> c.copy(items = c.items.map { if (it.id == itemId) it.copy(hiddenAt = stamp) else it }) })
+    }
+    fun setShowHidden(show: Boolean) = update { it.copy(showHidden = show) }
+
+    /** Rewrites favoritedAt stamps so the favorites block shows [orderedIds] in that order. */
+    fun applyFavoritesOrder(orderedIds: List<String>) =
+        restamp(orderedIds, { it.favoritedAt }) { item, t -> item.copy(favoritedAt = t) }
+
+    fun applyHiddenOrder(orderedIds: List<String>) =
+        restamp(orderedIds, { it.hiddenAt }) { item, t -> item.copy(hiddenAt = t) }
+
+    private fun restamp(orderedIds: List<String>, read: (Item) -> Long?, write: (Item, Long) -> Item) = update { cfg ->
+        val base = cfg.allItems().mapNotNull(read).minOrNull() ?: System.currentTimeMillis()
+        val stamp = orderedIds.withIndex().associate { (i, id) -> id to base + i }
+        cfg.copy(categories = cfg.categories.map { c ->
+            c.copy(items = c.items.map { item -> stamp[item.id]?.let { write(item, it) } ?: item })
+        })
+    }
+
     fun setItemIcon(itemId: String, icon: IconRef?) = update { cfg ->
         cfg.copy(categories = cfg.categories.map { c -> c.copy(items = c.items.map { if (it.id == itemId) it.copy(icon = icon) else it }) })
     }

@@ -75,6 +75,9 @@ fun SettingsSheet(
             SettingRow("Show icons", onClick = { repository.setShowIcons(!config.showIcons) }) {
                 Switch(checked = config.showIcons, onCheckedChange = { repository.setShowIcons(it) })
             }
+            SettingRow("Show hidden", subtitle = "List hidden apps in a block at the bottom", onClick = { repository.setShowHidden(!config.showHidden) }) {
+                Switch(checked = config.showHidden, onCheckedChange = { repository.setShowHidden(it) })
+            }
             SettingRow(
                 "Icon pack",
                 subtitle = packs.firstOrNull { it.packageName == config.iconPack }?.label ?: "System icons",

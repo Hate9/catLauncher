@@ -19,6 +19,14 @@ import java.util.UUID
 const val UNCATEGORIZED_ID = "uncategorized"
 const val UNCATEGORIZED_NAME = "Uncategorized"
 
+/** Virtual category shown first, listing every item with a [Item.favoritedAt]; not stored as a category. */
+const val FAVORITES_ID = "favorites"
+const val FAVORITES_NAME = "Favorites"
+
+/** Virtual category shown last, and only with [LauncherConfig.showHidden], listing items with a [Item.hiddenAt]. */
+const val HIDDEN_ID = "hidden"
+const val HIDDEN_NAME = "Hidden"
+
 /** What a list row points at. The `id` is stable across launches and across profiles. */
 @Serializable
 sealed class ItemRef {
@@ -73,6 +81,10 @@ data class Item(
     val label: String? = null,
     /** Per-item icon override; null means the global pack (or the app's own icon). */
     val icon: IconRef? = null,
+    /** When the item was starred; null means not a favorite. Favorites order by this, newest last. */
+    val favoritedAt: Long? = null,
+    /** When the item was hidden; null means visible. Hidden items leave their category's rows. */
+    val hiddenAt: Long? = null,
 ) {
     val id: String get() = ref.id
 }
@@ -114,6 +126,8 @@ data class LauncherConfig(
     val showIcons: Boolean = true,
     /** Package name of the icon pack applied to every app, or null for system icons. */
     val iconPack: String? = null,
+    /** Reveal hidden items in a Hidden block at the bottom. */
+    val showHidden: Boolean = false,
 ) {
     val uncategorized: Category get() = categories.last { it.isUncategorized }
 
