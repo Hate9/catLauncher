@@ -50,6 +50,12 @@ fun rememberHeaderSnapFlingBehavior(
             private fun enabled() = enabledState.value()
             private fun rows() = rowsState.value()
 
+            /** Headers all measure the same, so one sighting makes later estimates exact. */
+            private var knownHeaderSize: Float? = null
+            private fun noteHeaderSize(visible: List<LazyListItemInfo>) {
+                visible.firstOrNull { it.isHeader }?.let { knownHeaderSize = it.size.toFloat() }
+            }
+
             override fun calculateApproachOffset(velocity: Float, decayOffset: Float): Float {
                 if (!enabled()) return decayOffset
                 val layout = state.layoutInfo
@@ -60,13 +66,16 @@ fun rememberHeaderSnapFlingBehavior(
                 val start = layout.viewportStartOffset
                 val forward = decayOffset > 0
                 val list = rows()
+                noteHeaderSize(visible)
 
-                val headerSize = (visible.filter { it.isHeader }.map { it.size }.average().takeIf { !it.isNaN() } ?: 144.0).toFloat()
+                val headerSize = knownHeaderSize ?: 144f
                 val rowSize = (visible.filter { !it.isHeader }.map { it.size }.average().takeIf { !it.isNaN() } ?: 120.0).toFloat()
                 fun estimate(index: Int) = if (list.getOrNull(index) is Row.Header) headerSize else rowSize
+                var estimated = false
 
                 val target: Float? = if (forward) {
                     visible.firstOrNull { it.isHeader && it.offset > start + 1 }?.let { it.offset.toFloat() } ?: run {
+                        estimated = true
                         val last = visible.last()
                         var y = (last.offset + last.size).toFloat()
                         var i = last.index + 1
@@ -79,6 +88,7 @@ fun rememberHeaderSnapFlingBehavior(
                     }
                 } else {
                     visible.lastOrNull { it.isHeader && it.offset < start - 1 }?.let { it.offset.toFloat() } ?: run {
+                        estimated = true
                         val first = visible.first()
                         var y = first.offset.toFloat()
                         var i = first.index - 1
@@ -92,12 +102,16 @@ fun rememberHeaderSnapFlingBehavior(
                     }
                 }
                 if (target == null) return decayOffset
-                return target + headerTopGapPx - start
+                // An estimate can be off by a little; stop short of it so the exact snap that follows
+                // keeps moving the same way instead of pulling back.
+                val backoff = if (estimated) (rowSize * 0.6f) * (if (forward) -1f else 1f) else 0f
+                return target + headerTopGapPx - start + backoff
             }
 
             override fun calculateSnapOffset(velocity: Float): Float {
                 if (!enabled()) return 0f
                 val layout = state.layoutInfo
+                noteHeaderSize(layout.visibleItemsInfo)
                 val start = layout.viewportStartOffset
                 var lower = Float.NEGATIVE_INFINITY
                 var upper = Float.POSITIVE_INFINITY
