@@ -17,6 +17,7 @@ import android.os.Looper
 import android.os.Handler
 import android.app.WallpaperManager
 import android.app.WallpaperColors
+import android.app.Activity
 import android.content.pm.ShortcutInfo
 import android.net.Uri
 import android.os.Build
@@ -66,6 +67,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -98,6 +100,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.ColorUtils
+import androidx.core.view.WindowCompat
 import androidx.compose.ui.zIndex
 import io.github.hate9.catlauncher.data.Category
 import io.github.hate9.catlauncher.data.FAVORITES_ID
@@ -242,6 +245,16 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
     }
 
     val darkText = rememberWallpaperDarkText()
+    // System bar icons follow the same wallpaper-derived choice as the launcher text.
+    val rootView = LocalView.current
+    SideEffect {
+        (rootView.context as? Activity)?.window?.let { window ->
+            WindowCompat.getInsetsController(window, rootView).apply {
+                isAppearanceLightStatusBars = darkText
+                isAppearanceLightNavigationBars = darkText
+            }
+        }
+    }
     CompositionLocalProvider(LocalDarkText provides darkText) {
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
