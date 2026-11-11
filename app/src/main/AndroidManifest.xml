@@ -58,6 +58,29 @@ You should have received a copy of the GNU General Public License along with thi
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <!-- Pin requests from apps (ShortcutManager.requestPinShortcut / AppWidgetManager.requestPinAppWidget). -->
+        <activity
+            android:name=".shortcuts.PinShortcutActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.CatLauncher.Translucent">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+                <action android:name="android.content.pm.action.CONFIRM_PIN_APPWIDGET" />
+            </intent-filter>
+        </activity>
+
+        <!-- Legacy pre-Oreo shortcut installs. -->
+        <receiver
+            android:name=".shortcuts.InstallShortcutReceiver"
+            android:exported="true"
+            android:permission="com.android.launcher.permission.INSTALL_SHORTCUT">
+            <intent-filter>
+                <action android:name="com.android.launcher.action.INSTALL_SHORTCUT" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

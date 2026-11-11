@@ -108,6 +108,26 @@ class WidgetController(
         }
     }
 
+    /**
+     * Binds a widget another app asked to pin (ACTION_CONFIRM_PIN_APPWIDGET). Returns false when
+     * the request was withdrawn; true means the add continues, possibly through a configure
+     * activity whose result arrives in [onActivityResult].
+     */
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.O)
+    fun acceptPinRequest(request: android.content.pm.LauncherApps.PinItemRequest, provider: AppWidgetProviderInfo): Boolean {
+        val id = host.allocateAppWidgetId()
+        pendingId = id
+        pendingProvider = provider
+        val extras = Bundle().apply { putInt(AppWidgetManager.EXTRA_APPWIDGET_ID, id) }
+        val accepted = runCatching { request.accept(extras) }.getOrDefault(false)
+        if (!accepted) {
+            abort(id)
+            return false
+        }
+        configureOrFinish(id, provider)
+        return true
+    }
+
     private fun configureOrFinish(id: Int, provider: AppWidgetProviderInfo?) {
         val info = provider ?: manager.getAppWidgetInfo(id)
         if (info?.configure == null) {
