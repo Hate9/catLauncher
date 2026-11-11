@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import kotlin.math.abs
 
 /**
@@ -37,9 +38,14 @@ fun rememberHeaderSnapFlingBehavior(
     rows: () -> List<Row>,
     enabled: () -> Boolean,
 ): FlingBehavior {
+    // The provider is remembered once; read the latest lambdas through state so they do not go stale.
+    val rowsState = rememberUpdatedState(rows)
+    val enabledState = rememberUpdatedState(enabled)
     val provider = remember(state, headerTopGapPx) {
         object : SnapLayoutInfoProvider {
             private val LazyListItemInfo.isHeader get() = (key as? String)?.startsWith("h:") == true
+            private fun enabled() = enabledState.value()
+            private fun rows() = rowsState.value()
 
             override fun calculateApproachOffset(velocity: Float, decayOffset: Float): Float {
                 if (!enabled()) return decayOffset
