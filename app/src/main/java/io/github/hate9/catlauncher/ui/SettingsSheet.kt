@@ -17,6 +17,18 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import io.github.hate9.catlauncher.wallpaper.WallpaperPrefs
+import io.github.hate9.catlauncher.wallpaper.CatWallpaperService
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Lifecycle
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.runtime.DisposableEffect
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.os.Build
+import android.net.Uri
+import android.content.ComponentName
+import android.app.WallpaperManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -71,6 +83,23 @@ fun SettingsSheet(
     var importing by remember { mutableStateOf(false) }
     var choosingPack by remember { mutableStateOf(false) }
     var choosingSnap by remember { mutableStateOf(false) }
+    var editingWallpaperSource by remember { mutableStateOf(false) }
+    val wallpaperPrefs = remember { WallpaperPrefs(context) }
+    var wallpaperSource by remember { mutableStateOf(wallpaperPrefs.source) }
+    var fileAccess by remember { mutableStateOf(CatWallpaperService.hasFileAccess(context)) }
+    val lifecycle = LocalLifecycleOwner.current
+    DisposableEffect(lifecycle) {
+        // Re-check after the user comes back from the system permission page.
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) fileAccess = CatWallpaperService.hasFileAccess(context) }
+        lifecycle.lifecycle.addObserver(observer)
+        onDispose { lifecycle.lifecycle.removeObserver(observer) }
+    }
+    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            wallpaperPrefs.source = uri.toString(); wallpaperSource = uri.toString()
+        }
+    }
     val packs = remember { repository.apps.iconPacks.installedPacks() }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -111,6 +140,30 @@ fun SettingsSheet(
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Wallpaper"))
                 }.onFailure { Toast.makeText(context, "No wallpaper picker found", Toast.LENGTH_SHORT).show() }
             }
+            HorizontalDivider()
+            Text("Scrolling wallpaper (optional)", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+            Text(
+                "A live wallpaper that pans with the list. Pick an image, then choose \"catLauncher wallpaper\" in the system picker. " +
+                    "Automation can swap the image with the SET_WALLPAPER broadcast. Leave this alone to keep any other wallpaper.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 24.dp),
+            )
+            SettingRow("Image", subtitle = wallpaperSource ?: "None (plain colour)", onClick = { editingWallpaperSource = true }) {
+                TextButton(onClick = { pickImage.launch(arrayOf("image/*")) }) { Text("Pick…") }
+            }
+            if (!fileAccess) ActionRow("Grant all-files access (for image paths)") {
+                val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
+                else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                runCatching { context.startActivity(intent) }.onFailure { Toast.makeText(context, "Not available on this device", Toast.LENGTH_SHORT).show() }
+            }
+            ActionRow("Use as live wallpaper…") {
+                val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+                    .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, ComponentName(context, CatWallpaperService::class.java))
+                runCatching { context.startActivity(intent) }.onFailure { Toast.makeText(context, "No live wallpaper picker on this device", Toast.LENGTH_SHORT).show() }
+            }
+            HorizontalDivider()
+
             ActionRow("Default launcher settings") {
                 runCatching { context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) }
                     .onFailure { Toast.makeText(context, "Not available on this device", Toast.LENGTH_SHORT).show() }
@@ -144,6 +197,16 @@ fun SettingsSheet(
                     .onSuccess { Toast.makeText(context, "Config imported", Toast.LENGTH_SHORT).show(); importing = false }
                     .onFailure { Toast.makeText(context, "Invalid config: ${it.message}", Toast.LENGTH_LONG).show() }
             },
+        )
+    }
+
+    if (editingWallpaperSource) {
+        TextInputDialog(
+            title = "Wallpaper image path or URI",
+            initial = wallpaperSource ?: "",
+            confirmLabel = "Set",
+            onDismiss = { editingWallpaperSource = false },
+            onConfirm = { wallpaperPrefs.source = it.trim(); wallpaperSource = it.trim(); editingWallpaperSource = false },
         )
     }
 

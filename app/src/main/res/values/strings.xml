@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">catLauncher</string>
+    <string name="wallpaper_label">catLauncher wallpaper</string>
+    <string name="wallpaper_description">Shows the image you choose and scrolls it with the launcher. Change it from catLauncher settings or by broadcast.</string>
 </resources>
