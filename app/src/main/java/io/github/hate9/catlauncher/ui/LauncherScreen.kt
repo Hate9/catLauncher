@@ -124,6 +124,7 @@ private sealed interface DialogState {
     data class NewCategory(val itemId: String?) : DialogState
     data class MoveTo(val row: Row.Entry) : DialogState
     data class ChangeIcon(val row: Row.Entry) : DialogState
+    data class RenameItem(val row: Row.Entry) : DialogState
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -343,6 +344,11 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                 onNewCategory = { dialog = DialogState.NewCategory(d.row.item.id) },
             ) { vm.repository.moveItemToCategory(d.row.item.id, it); dialog = null }
             is DialogState.ChangeIcon -> IconPickerDialog(vm, d.row.item, d.row.label, config.iconPack, onDismiss = { dialog = null })
+            is DialogState.RenameItem -> TextInputDialog(
+                "Rename", d.row.label, "Rename",
+                onDismiss = { dialog = null },
+                onReset = if (d.row.item.customLabel != null) ({ vm.repository.setItemLabel(d.row.item.id, null); dialog = null }) else null,
+            ) { vm.repository.setItemLabel(d.row.item.id, it); dialog = null }
             null -> {}
         }
 
@@ -604,6 +610,7 @@ private fun ItemMenu(vm: LauncherViewModel, row: Row.Entry, onClose: () -> Unit,
     MenuItem(if (hidden) "Unhide" else "Hide") { vm.repository.setHidden(row.item.id, !hidden); onClose() }
     if (row.block == null) MenuItem("Move to category…") { onDialog(DialogState.MoveTo(row)); onClose() }
     MenuItem("Change icon…") { onDialog(DialogState.ChangeIcon(row)); onClose() }
+    MenuItem("Rename…") { onDialog(DialogState.RenameItem(row)); onClose() }
     if (ref !is ItemRef.IntentShortcut) MenuItem("App info") { vm.repository.apps.openAppInfo(ref); onClose() }
     when (ref) {
         is ItemRef.App -> MenuItem("Uninstall") {

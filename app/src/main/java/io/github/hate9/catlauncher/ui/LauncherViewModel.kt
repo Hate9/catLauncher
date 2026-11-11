@@ -179,7 +179,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         val out = ArrayList<Row>()
         if (q.isEmpty()) cfg.widgets.forEach { out += Row.Widget(it) }
         var first = true
-        fun labelOf(item: Item) = res[item.id]?.label ?: item.label ?: item.ref.packageName
+        fun labelOf(item: Item) = item.customLabel ?: res[item.id]?.label ?: item.label ?: item.ref.packageName
         fun matches(item: Item) = q.isEmpty() || labelOf(item).contains(q, ignoreCase = true)
         fun visible(item: Item) = item.hiddenAt == null
 

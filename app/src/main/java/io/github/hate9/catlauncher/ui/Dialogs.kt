@@ -51,6 +51,8 @@ fun TextInputDialog(
     singleLine: Boolean = true,
     monospace: Boolean = false,
     onDismiss: () -> Unit,
+    /** When given, a third button that restores the default value. */
+    onReset: (() -> Unit)? = null,
     onConfirm: (String) -> Unit,
 ) {
     // Cursor at the end so a rename appends instead of prepending.
@@ -75,7 +77,12 @@ fun TextInputDialog(
             )
         },
         confirmButton = { TextButton(onClick = { onConfirm(text.text) }, enabled = text.text.isNotBlank()) { Text(confirmLabel) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = {
+            Row {
+                if (onReset != null) TextButton(onClick = onReset) { Text("Reset") }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        },
     )
 }
 

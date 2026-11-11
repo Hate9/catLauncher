@@ -182,6 +182,10 @@ class LauncherRepository(context: Context) {
         cfg.copy(categories = cfg.categories.map { c -> c.copy(items = c.items.map { if (it.id == itemId) it.copy(hiddenAt = stamp) else it }) })
     }
     fun setShowHidden(show: Boolean) = update { it.copy(showHidden = show) }
+    fun setItemLabel(itemId: String, label: String?) = update { cfg ->
+        val clean = label?.trim()?.takeIf { it.isNotEmpty() }
+        cfg.copy(categories = cfg.categories.map { c -> c.copy(items = c.items.map { if (it.id == itemId) it.copy(customLabel = clean) else it }) })
+    }
     fun setSnapMode(mode: String) = update { it.copy(snapMode = mode) }
     fun setScrollWallpaper(on: Boolean) = update { it.copy(scrollWallpaper = on) }
 

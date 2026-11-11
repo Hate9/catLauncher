@@ -89,6 +89,8 @@ data class Item(
     val favoritedAt: Long? = null,
     /** When the item was hidden; null means visible. Hidden items leave their category's rows. */
     val hiddenAt: Long? = null,
+    /** User-chosen display name; null shows the app's own label. */
+    val customLabel: String? = null,
 ) {
     val id: String get() = ref.id
 }
