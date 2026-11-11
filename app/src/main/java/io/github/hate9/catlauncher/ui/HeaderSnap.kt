@@ -38,7 +38,9 @@ fun rememberHeaderSnapFlingBehavior(state: LazyListState, enabled: () -> Boolean
                 var upper = Float.POSITIVE_INFINITY
                 for (item in layout.visibleItemsInfo) {
                     val key = item.key as? String ?: continue
-                    if (!key.startsWith("h:")) continue
+                    // Headers snap, and so does the very start of the list so the widget area
+                    // above the first header stays reachable.
+                    if (!key.startsWith("h:") && item.index != 0) continue
                     val distance = (item.offset - start).toFloat()
                     if (distance <= 0f && distance > lower) lower = distance
                     if (distance >= 0f && distance < upper) upper = distance

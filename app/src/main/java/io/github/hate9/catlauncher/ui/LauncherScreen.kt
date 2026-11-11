@@ -80,6 +80,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
@@ -122,11 +123,31 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
     val listState = rememberLazyListState()
 
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     var menu by remember { mutableStateOf<MenuState?>(null) }
     var dialog by remember { mutableStateOf<DialogState?>(null) }
     var settingsOpen by remember { mutableStateOf(false) }
     LaunchedEffect(settingsRequests) { if (settingsRequests > 0) settingsOpen = true }
+
+    // Dialogs leave the IME attached and focus falls into the search field; tidy up when they close.
+    LaunchedEffect(dialog == null, settingsOpen) {
+        if (dialog == null && !settingsOpen) {
+            focusManager.clearFocus()
+            keyboard?.hide()
+        }
+    }
+
+    // A category created from a menu is inserted above the viewport; bring it into view.
+    var scrollToKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(scrollToKey, shown) {
+        val key = scrollToKey ?: return@LaunchedEffect
+        val index = shown.indexOfFirst { it.key == key }
+        if (index >= 0) {
+            scrollToKey = null
+            listState.animateScrollToItem(index)
+        }
+    }
 
     val drag = remember(listState) {
         DragController(
@@ -242,7 +263,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                 vm.repository.renameCategory(d.category.id, it); dialog = null
             }
             is DialogState.NewCategory -> TextInputDialog("New category", "", "Create", onDismiss = { dialog = null }) {
-                vm.repository.createCategory(it, d.itemId); dialog = null
+                scrollToKey = "h:" + vm.repository.createCategory(it, d.itemId); dialog = null
             }
             is DialogState.Delete -> ConfirmDialog(
                 "Delete \"${d.category.name}\"?", "Its ${d.category.items.size} items move to $UNCATEGORIZED_LABEL.", "Delete",
