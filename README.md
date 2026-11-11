@@ -30,6 +30,20 @@ you arrange it in place instead of editing a config file.
 Standard Android Studio / Gradle project. `./gradlew assembleDebug` needs an Android SDK with
 platform 36; `./gradlew testDebugUnitTest` runs the model tests.
 
+## Releasing
+
+Pushing a tag like `v2.0.0` runs the release workflow, which builds a signed APK and attaches it
+to a GitHub release. It needs four repository secrets: `RELEASE_KEYSTORE_BASE64` (the keystore,
+`base64 -w0 release.jks`), `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS` and
+`RELEASE_KEY_PASSWORD`. Locally, set the same names as environment variables (with
+`RELEASE_KEYSTORE` pointing at the file) to get a signed `assembleRelease`.
+
+## Automation
+
+The optional live wallpaper takes its image from a broadcast, e.g. from Tasker's Send Intent:
+action `io.github.hate9.catlauncher.SET_WALLPAPER`, extra `path:/storage/emulated/0/img.jpg`,
+package `io.github.hate9.catlauncher`, target Broadcast Receiver.
+
 ## License
 
 GPL-3.0. Copyright (C) 2025 Timothy Choi (tmtLauncher), (C) 2026 catLauncher contributors.
