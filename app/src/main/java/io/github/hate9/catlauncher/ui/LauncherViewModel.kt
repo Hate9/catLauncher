@@ -19,6 +19,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.UserHandle
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -89,12 +90,26 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val callback = object : LauncherApps.Callback() {
-        override fun onPackageRemoved(packageName: String, user: UserHandle) = resync(invalidate = true)
-        override fun onPackageAdded(packageName: String, user: UserHandle) = resync(invalidate = true)
-        override fun onPackageChanged(packageName: String, user: UserHandle) = resync(invalidate = true)
-        override fun onPackagesAvailable(p: Array<out String>, user: UserHandle, replacing: Boolean) = resync(invalidate = true)
-        override fun onPackagesUnavailable(p: Array<out String>, user: UserHandle, replacing: Boolean) = resync(invalidate = true)
-        override fun onShortcutsChanged(packageName: String, shortcuts: MutableList<ShortcutInfo>, user: UserHandle) = resync(invalidate = true)
+        override fun onPackageRemoved(packageName: String, user: UserHandle) = packagesChanged("removed", packageName)
+        override fun onPackageAdded(packageName: String, user: UserHandle) = packagesChanged("added", packageName)
+        override fun onPackageChanged(packageName: String, user: UserHandle) = packagesChanged("changed", packageName)
+        override fun onPackagesAvailable(p: Array<out String>, user: UserHandle, replacing: Boolean) = packagesChanged("available", *p)
+        override fun onPackagesUnavailable(p: Array<out String>, user: UserHandle, replacing: Boolean) = packagesChanged("unavailable", *p)
+        override fun onShortcutsChanged(packageName: String, shortcuts: MutableList<ShortcutInfo>, user: UserHandle) = packagesChanged("shortcuts", packageName)
+    }
+
+    private var resyncJob: Job? = null
+
+    /** Drops cached labels/icons for just the affected packages and resyncs after a short debounce. */
+    private fun packagesChanged(why: String, vararg packages: String) {
+        Log.d(TAG, "packages $why: ${packages.joinToString()}")
+        val affected = packages.toSet()
+        resolved.update { map -> map.filterKeys { id -> affected.none { pkg -> id.contains(":$pkg/") } } }
+        resyncJob?.cancel()
+        resyncJob = viewModelScope.launch {
+            delay(400)
+            resync(invalidate = false)
+        }
     }
 
     /** Key sequence of a committed drop; the working copy stays on screen until [rows] shows it. */
@@ -251,6 +266,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         else null
 
     companion object {
+        private const val TAG = "LauncherViewModel"
         const val ICON_DP = 40
     }
 }
