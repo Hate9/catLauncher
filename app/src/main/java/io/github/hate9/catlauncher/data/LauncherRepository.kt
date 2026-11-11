@@ -182,6 +182,7 @@ class LauncherRepository(context: Context) {
         cfg.copy(categories = cfg.categories.map { c -> c.copy(items = c.items.map { if (it.id == itemId) it.copy(hiddenAt = stamp) else it }) })
     }
     fun setShowHidden(show: Boolean) = update { it.copy(showHidden = show) }
+    fun setSnapMode(mode: String) = update { it.copy(snapMode = mode) }
 
     /** Rewrites favoritedAt stamps so the favorites block shows [orderedIds] in that order. */
     fun applyFavoritesOrder(orderedIds: List<String>) =

@@ -27,6 +27,10 @@ const val FAVORITES_NAME = "Favorites"
 const val HIDDEN_ID = "hidden"
 const val HIDDEN_NAME = "Hidden"
 
+const val SNAP_BOTH = "both"
+const val SNAP_DOWN = "down"
+const val SNAP_OFF = "off"
+
 /** What a list row points at. The `id` is stable across launches and across profiles. */
 @Serializable
 sealed class ItemRef {
@@ -128,6 +132,8 @@ data class LauncherConfig(
     val iconPack: String? = null,
     /** Reveal hidden items in a Hidden block at the bottom. */
     val showHidden: Boolean = false,
+    /** Header snapping: [SNAP_BOTH], [SNAP_DOWN] (only when flinging towards the end) or [SNAP_OFF]. */
+    val snapMode: String = SNAP_DOWN,
 ) {
     val uncategorized: Category get() = categories.last { it.isUncategorized }
 

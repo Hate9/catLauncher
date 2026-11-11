@@ -39,7 +39,8 @@ fun rememberHeaderSnapFlingBehavior(
     state: LazyListState,
     headerTopGapPx: Float,
     rows: () -> List<Row>,
-    enabled: () -> Boolean,
+    /** Whether to snap for a scroll in the given direction (true = towards the end of the list). */
+    enabled: (forward: Boolean) -> Boolean,
 ): FlingBehavior {
     // The provider is remembered once; read the latest lambdas through state so they do not go stale.
     val rowsState = rememberUpdatedState(rows)
@@ -47,8 +48,11 @@ fun rememberHeaderSnapFlingBehavior(
     val provider = remember(state, headerTopGapPx) {
         object : SnapLayoutInfoProvider {
             private val LazyListItemInfo.isHeader get() = (key as? String)?.startsWith("h:") == true
-            private fun enabled() = enabledState.value()
+            private fun enabled(forward: Boolean) = enabledState.value(forward)
             private fun rows() = rowsState.value()
+
+            /** Direction of the fling being handled; approach runs first and records it for the snap step. */
+            private var lastForward = true
 
             /** Headers all measure the same, so one sighting makes later estimates exact. */
             private var knownHeaderSize: Float? = null
@@ -57,7 +61,8 @@ fun rememberHeaderSnapFlingBehavior(
             }
 
             override fun calculateApproachOffset(velocity: Float, decayOffset: Float): Float {
-                if (!enabled()) return decayOffset
+                lastForward = decayOffset > 0
+                if (!enabled(lastForward)) return decayOffset
                 val layout = state.layoutInfo
                 val visible = layout.visibleItemsInfo
                 if (visible.isEmpty()) return decayOffset
@@ -109,7 +114,7 @@ fun rememberHeaderSnapFlingBehavior(
             }
 
             override fun calculateSnapOffset(velocity: Float): Float {
-                if (!enabled()) return 0f
+                if (!enabled(lastForward)) return 0f
                 val layout = state.layoutInfo
                 noteHeaderSize(layout.visibleItemsInfo)
                 val start = layout.viewportStartOffset

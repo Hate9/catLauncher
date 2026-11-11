@@ -51,6 +51,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import io.github.hate9.catlauncher.data.LauncherConfig
+import io.github.hate9.catlauncher.data.SNAP_BOTH
+import io.github.hate9.catlauncher.data.SNAP_DOWN
+import io.github.hate9.catlauncher.data.SNAP_OFF
+import androidx.compose.material3.RadioButton
 import io.github.hate9.catlauncher.data.LauncherRepository
 import io.github.hate9.catlauncher.widgets.WidgetController
 
@@ -66,6 +70,7 @@ fun SettingsSheet(
     var pickingWidget by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
     var choosingPack by remember { mutableStateOf(false) }
+    var choosingSnap by remember { mutableStateOf(false) }
     val packs = remember { repository.apps.iconPacks.installedPacks() }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -78,6 +83,7 @@ fun SettingsSheet(
             SettingRow("Show hidden", subtitle = "List hidden apps in a block at the bottom", onClick = { repository.setShowHidden(!config.showHidden) }) {
                 Switch(checked = config.showHidden, onCheckedChange = { repository.setShowHidden(it) })
             }
+            SettingRow("Snap to headers", subtitle = snapLabel(config.snapMode), onClick = { choosingSnap = true }) {}
             SettingRow(
                 "Icon pack",
                 subtitle = packs.firstOrNull { it.packageName == config.iconPack }?.label ?: "System icons",
@@ -138,6 +144,31 @@ fun SettingsSheet(
         )
     }
 
+    if (choosingSnap) {
+        AlertDialog(
+            onDismissRequest = { choosingSnap = false },
+            title = { Text("Snap to headers") },
+            text = {
+                Column {
+                    listOf(SNAP_DOWN, SNAP_BOTH, SNAP_OFF).forEach { mode ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { repository.setSnapMode(mode); choosingSnap = false }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = config.snapMode == mode, onClick = null)
+                            Text(snapLabel(mode), modifier = Modifier.padding(start = 8.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { choosingSnap = false }) { Text("Cancel") } },
+        )
+    }
+
     if (choosingPack) {
         IconPackChooserDialog(packs, config.iconPack, onDismiss = { choosingPack = false }) {
             repository.setIconPack(it); choosingPack = false
@@ -151,6 +182,12 @@ fun SettingsSheet(
             widgets.beginAdd(provider)
         }
     }
+}
+
+private fun snapLabel(mode: String) = when (mode) {
+    SNAP_BOTH -> "Both directions"
+    SNAP_OFF -> "Off"
+    else -> "Only when scrolling down"
 }
 
 @Composable

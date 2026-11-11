@@ -100,6 +100,8 @@ import androidx.compose.ui.zIndex
 import io.github.hate9.catlauncher.data.Category
 import io.github.hate9.catlauncher.data.FAVORITES_ID
 import io.github.hate9.catlauncher.data.HIDDEN_ID
+import io.github.hate9.catlauncher.data.SNAP_DOWN
+import io.github.hate9.catlauncher.data.SNAP_OFF
 import io.github.hate9.catlauncher.data.ItemRef
 import io.github.hate9.catlauncher.data.UNCATEGORIZED_ID
 import io.github.hate9.catlauncher.widgets.WidgetController
@@ -231,7 +233,13 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
             )
             LazyColumn(
                 state = listState,
-                flingBehavior = rememberHeaderSnapFlingBehavior(listState, headerTopGapPx = with(density) { HEADER_TOP_GAP.toPx() }, rows = { shown }) { !drag.isActive && query.isBlank() },
+                flingBehavior = rememberHeaderSnapFlingBehavior(listState, headerTopGapPx = with(density) { HEADER_TOP_GAP.toPx() }, rows = { shown }) { forward ->
+                    !drag.isActive && query.isBlank() && when (config.snapMode) {
+                        SNAP_OFF -> false
+                        SNAP_DOWN -> forward
+                        else -> true
+                    }
+                },
                 contentPadding = PaddingValues(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
                 modifier = Modifier
                     .weight(1f)
