@@ -34,6 +34,7 @@ class AppSource(private val context: Context) {
     val launcherApps: LauncherApps = context.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
     private val userManager: UserManager = context.getSystemService(Context.USER_SERVICE) as UserManager
     private val pm = context.packageManager
+    val iconPacks = IconPackManager(context)
 
     data class InstalledApp(val ref: ItemRef.App, val label: String)
     data class Resolved(val label: String, val icon: Bitmap?)
@@ -99,7 +100,18 @@ class AppSource(private val context: Context) {
 
     // ---- resolving labels and icons ----------------------------------------------------------
 
-    fun resolve(item: Item, iconPx: Int, wantIcon: Boolean): Resolved = when (val ref = item.ref) {
+    fun resolve(item: Item, iconPx: Int, wantIcon: Boolean, iconPack: String?): Resolved {
+        val base = resolveSystem(item, iconPx, wantIcon)
+        if (!wantIcon) return base
+        item.icon?.let { override ->
+            iconPacks.load(override.pack)?.let { pack -> iconPacks.bitmap(pack, override.drawable, iconPx) }?.let { return base.copy(icon = it) }
+        }
+        val ref = item.ref as? ItemRef.App ?: return base
+        val pack = iconPack?.let { iconPacks.load(it) } ?: return base
+        return iconPacks.iconFor(pack, ComponentName(ref.packageName, ref.className), iconPx)?.let { base.copy(icon = it) } ?: base
+    }
+
+    private fun resolveSystem(item: Item, iconPx: Int, wantIcon: Boolean): Resolved = when (val ref = item.ref) {
         is ItemRef.App -> {
             val user = userFor(ref.userSerial)
             val info = user?.let { runCatching { launcherApps.resolveActivity(mainIntent(ref), it) }.getOrNull() }

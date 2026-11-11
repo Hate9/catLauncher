@@ -172,6 +172,10 @@ class LauncherRepository(context: Context) {
     fun addWidget(entry: WidgetEntry) = update { cfg -> cfg.copy(widgets = cfg.widgets.filter { it.appWidgetId != entry.appWidgetId } + entry) }
     fun removeWidget(appWidgetId: Int) = update { cfg -> cfg.copy(widgets = cfg.widgets.filter { it.appWidgetId != appWidgetId }) }
     fun setShowIcons(show: Boolean) = update { it.copy(showIcons = show) }
+    fun setIconPack(packageName: String?) = update { it.copy(iconPack = packageName) }
+    fun setItemIcon(itemId: String, icon: IconRef?) = update { cfg ->
+        cfg.copy(categories = cfg.categories.map { c -> c.copy(items = c.items.map { if (it.id == itemId) it.copy(icon = icon) else it }) })
+    }
 
     // ---- sync with the system ---------------------------------------------------------------
 

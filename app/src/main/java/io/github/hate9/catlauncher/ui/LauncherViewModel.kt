@@ -68,7 +68,8 @@ sealed interface Row {
     }
 }
 
-data class ResolvedEntry(val label: String, val icon: ImageBitmap?)
+/** [iconKey] records which pack/override produced the icon so a change invalidates it. */
+data class ResolvedEntry(val label: String, val icon: ImageBitmap?, val iconKey: String = "")
 
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     val repository = LauncherApp.repository(app)
@@ -143,18 +144,20 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private fun iconKey(cfg: LauncherConfig, item: Item) = "${cfg.iconPack}|${item.icon?.pack}/${item.icon?.drawable}"
+
     private fun resolveMissing(cfg: LauncherConfig, force: Boolean = false) {
         val wantIcons = cfg.showIcons
         val missing = cfg.allItems().filter { item ->
-            force || resolved.value[item.id].let { it == null || (wantIcons && it.icon == null) }
+            force || resolved.value[item.id].let { it == null || (wantIcons && (it.icon == null || it.iconKey != iconKey(cfg, item))) }
         }.toList()
         if (missing.isEmpty()) return
         resolveJob?.cancel()
         resolveJob = viewModelScope.launch(Dispatchers.Default) {
             val fresh = HashMap<String, ResolvedEntry>()
             for (item in missing) {
-                val r = apps.resolve(item, iconPx, wantIcons)
-                fresh[item.id] = ResolvedEntry(r.label, r.icon?.asImageBitmap())
+                val r = apps.resolve(item, iconPx, wantIcons, cfg.iconPack)
+                fresh[item.id] = ResolvedEntry(r.label, r.icon?.asImageBitmap(), iconKey(cfg, item))
                 if (fresh.size % 16 == 0) resolved.update { it + fresh }
             }
             resolved.update { it + fresh }
@@ -264,6 +267,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1)
             apps.shortcutIcon(info)?.toBitmap(iconPx, iconPx)?.asImageBitmap()
         else null
+
+    /** A pack drawable at list size, for the icon picker grid. */
+    suspend fun packBitmap(pack: String, drawable: String): ImageBitmap? = withContext(Dispatchers.IO) {
+        apps.iconPacks.load(pack)?.let { apps.iconPacks.bitmap(it, drawable, iconPx) }?.asImageBitmap()
+    }
 
     companion object {
         private const val TAG = "LauncherViewModel"

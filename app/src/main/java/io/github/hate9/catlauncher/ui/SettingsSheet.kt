@@ -65,6 +65,8 @@ fun SettingsSheet(
     val context = LocalContext.current
     var pickingWidget by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
+    var choosingPack by remember { mutableStateOf(false) }
+    val packs = remember { repository.apps.iconPacks.installedPacks() }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(bottom = 24.dp)) {
@@ -73,6 +75,11 @@ fun SettingsSheet(
             SettingRow("Show icons", onClick = { repository.setShowIcons(!config.showIcons) }) {
                 Switch(checked = config.showIcons, onCheckedChange = { repository.setShowIcons(it) })
             }
+            SettingRow(
+                "Icon pack",
+                subtitle = packs.firstOrNull { it.packageName == config.iconPack }?.label ?: "System icons",
+                onClick = { choosingPack = true },
+            ) {}
             HorizontalDivider()
 
             Text("Widgets", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
@@ -126,6 +133,12 @@ fun SettingsSheet(
                     .onFailure { Toast.makeText(context, "Invalid config: ${it.message}", Toast.LENGTH_LONG).show() }
             },
         )
+    }
+
+    if (choosingPack) {
+        IconPackChooserDialog(packs, config.iconPack, onDismiss = { choosingPack = false }) {
+            repository.setIconPack(it); choosingPack = false
+        }
     }
 
     if (pickingWidget && widgets != null) {

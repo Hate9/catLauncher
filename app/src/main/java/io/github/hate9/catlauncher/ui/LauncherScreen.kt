@@ -117,6 +117,7 @@ private sealed interface DialogState {
     data class Delete(val category: Category) : DialogState
     data class NewCategory(val itemId: String?) : DialogState
     data class MoveTo(val row: Row.Entry) : DialogState
+    data class ChangeIcon(val row: Row.Entry) : DialogState
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -297,6 +298,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                 onDismiss = { dialog = null },
                 onNewCategory = { dialog = DialogState.NewCategory(d.row.item.id) },
             ) { vm.repository.moveItemToCategory(d.row.item.id, it); dialog = null }
+            is DialogState.ChangeIcon -> IconPickerDialog(vm, d.row.item, d.row.label, config.iconPack, onDismiss = { dialog = null })
             null -> {}
         }
 
@@ -548,6 +550,7 @@ private fun ItemMenu(vm: LauncherViewModel, row: Row.Entry, onClose: () -> Unit,
         if (shortcuts.isNotEmpty()) HorizontalDivider()
     }
     MenuItem("Move to category…") { onDialog(DialogState.MoveTo(row)); onClose() }
+    MenuItem("Change icon…") { onDialog(DialogState.ChangeIcon(row)); onClose() }
     if (ref !is ItemRef.IntentShortcut) MenuItem("App info") { vm.repository.apps.openAppInfo(ref); onClose() }
     when (ref) {
         is ItemRef.App -> MenuItem("Uninstall") {

@@ -60,6 +60,10 @@ sealed class ItemRef {
     }
 }
 
+/** A drawable inside an icon pack, chosen by the user for one item. */
+@Serializable
+data class IconRef(val pack: String, val drawable: String)
+
 @Serializable
 data class Item(
     val ref: ItemRef,
@@ -67,6 +71,8 @@ data class Item(
     val addedAt: Long,
     /** Cached label, used for shortcuts when the system will not resolve them (e.g. not default launcher). */
     val label: String? = null,
+    /** Per-item icon override; null means the global pack (or the app's own icon). */
+    val icon: IconRef? = null,
 ) {
     val id: String get() = ref.id
 }
@@ -106,6 +112,8 @@ data class LauncherConfig(
     val categories: List<Category> = listOf(Category.uncategorized()),
     val widgets: List<WidgetEntry> = emptyList(),
     val showIcons: Boolean = true,
+    /** Package name of the icon pack applied to every app, or null for system icons. */
+    val iconPack: String? = null,
 ) {
     val uncategorized: Category get() = categories.last { it.isUncategorized }
 
