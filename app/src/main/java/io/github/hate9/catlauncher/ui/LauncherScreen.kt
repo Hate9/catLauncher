@@ -104,6 +104,7 @@ import io.github.hate9.catlauncher.data.UNCATEGORIZED_ID
 import io.github.hate9.catlauncher.widgets.WidgetController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withTimeoutOrNull
 
 private sealed interface MenuState {
     val anchor: Offset
@@ -212,6 +213,12 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                     keyboard?.hide()
                     shown.firstOrNull { it is Row.Entry }?.let { vm.launch((it as Row.Entry).item) }
                 },
+                onLongPress = {
+                    focusManager.clearFocus()
+                    keyboard?.hide()
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    settingsOpen = true
+                },
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
             )
             LazyColumn(
@@ -270,7 +277,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                 ItemMenu(vm, m.row, onClose = { menu = null; drag.disarm() }, onDialog = { dialog = it })
             }
             is MenuState.ForHeader -> ContextMenuOverlay(anchor = m.anchor, onDismiss = { menu = null }) {
-                HeaderMenu(vm, config.categories, m.category, onClose = { menu = null }, onDialog = { dialog = it }, onSettings = { settingsOpen = true })
+                HeaderMenu(vm, config.categories, m.category, onClose = { menu = null }, onDialog = { dialog = it })
             }
             null -> {}
         }
@@ -374,8 +381,38 @@ private suspend fun PointerInputScope.trackDrag(drag: DragController) {
     }
 }
 
+/**
+ * Long press that beats the text field's own (text selection) long press: it watches the
+ * Initial pass, fires a little before the system timeout, and consumes the rest of the gesture.
+ */
+private suspend fun PointerInputScope.detectLongPressBeforeChildren(onLongPress: () -> Unit) {
+    val slop = viewConfiguration.touchSlop
+    val timeout = (viewConfiguration.longPressTimeoutMillis - 60).coerceAtLeast(100)
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        val held = withTimeoutOrNull(timeout) {
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                val change = event.changes.firstOrNull { it.id == down.id } ?: return@withTimeoutOrNull false
+                if (!change.pressed) return@withTimeoutOrNull false
+                if ((change.position - down.position).getDistance() > slop) return@withTimeoutOrNull false
+            }
+            @Suppress("UNREACHABLE_CODE") false
+        }
+        if (held == null) {
+            onLongPress()
+            // Swallow the remainder so the field neither selects text nor shows the keyboard.
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                event.changes.forEach { it.consume() }
+                if (event.changes.none { it.pressed }) break
+            }
+        }
+    }
+}
+
 @Composable
-private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onGo: () -> Unit, modifier: Modifier = Modifier) {
+private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onGo: () -> Unit, onLongPress: () -> Unit, modifier: Modifier = Modifier) {
     val textColor = launcherTextColor()
     BasicTextField(
         value = query,
@@ -387,7 +424,8 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onGo: () -
         keyboardActions = KeyboardActions(onGo = { onGo() }),
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = ROW_INSET, vertical = 6.dp),
+            .padding(horizontal = ROW_INSET, vertical = 6.dp)
+            .pointerInput(onLongPress) { detectLongPressBeforeChildren(onLongPress) },
         decorationBox = { inner ->
             Row(
                 Modifier
@@ -524,7 +562,7 @@ private fun ItemMenu(vm: LauncherViewModel, row: Row.Entry, onClose: () -> Unit,
 }
 
 @Composable
-private fun HeaderMenu(vm: LauncherViewModel, categories: List<Category>, category: Category, onClose: () -> Unit, onDialog: (DialogState) -> Unit, onSettings: () -> Unit) {
+private fun HeaderMenu(vm: LauncherViewModel, categories: List<Category>, category: Category, onClose: () -> Unit, onDialog: (DialogState) -> Unit) {
     val movable = categories.filter { !it.isUncategorized }
     val index = movable.indexOfFirst { it.id == category.id }
     MenuTitle(category.name)
@@ -536,6 +574,4 @@ private fun HeaderMenu(vm: LauncherViewModel, categories: List<Category>, catego
     MenuItem("New category…") { onDialog(DialogState.NewCategory(null)); onClose() }
     if (category.manual) MenuItem("Reset to automatic order") { vm.repository.resetCategoryOrder(category.id); onClose() }
     if (!category.isUncategorized) MenuItem("Delete…") { onDialog(DialogState.Delete(category)); onClose() }
-    HorizontalDivider()
-    MenuItem("Settings…") { onSettings(); onClose() }
 }
