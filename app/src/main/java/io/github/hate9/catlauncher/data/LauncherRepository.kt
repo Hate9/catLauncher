@@ -188,6 +188,7 @@ class LauncherRepository(context: Context) {
     }
     fun setSnapMode(mode: String) = update { it.copy(snapMode = mode) }
     fun setScrollWallpaper(on: Boolean) = update { it.copy(scrollWallpaper = on) }
+    fun setScrollToTopOnLeave(on: Boolean) = update { it.copy(scrollToTopOnLeave = on) }
 
     /** Rewrites favoritedAt stamps so the favorites block shows [orderedIds] in that order. */
     fun applyFavoritesOrder(orderedIds: List<String>) =

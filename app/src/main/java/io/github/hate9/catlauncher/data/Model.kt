@@ -138,6 +138,8 @@ data class LauncherConfig(
     val snapMode: String = SNAP_DOWN,
     /** Pan the wallpaper vertically with the list (live wallpapers, or static ones taller than the screen). */
     val scrollWallpaper: Boolean = true,
+    /** Return the list to the top whenever the launcher leaves the foreground (app launch, lock). */
+    val scrollToTopOnLeave: Boolean = true,
 ) {
     val uncategorized: Category get() = categories.last { it.isUncategorized }
 

@@ -13,6 +13,11 @@ You should have received a copy of the GNU General Public License along with thi
 package io.github.hate9.catlauncher.wallpaper
 
 import android.content.Context
+import android.content.IntentFilter
+import android.content.Intent
+import android.content.BroadcastReceiver
+import android.app.WallpaperManager
+import android.app.KeyguardManager
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -53,13 +58,31 @@ class CatWallpaperService : WallpaperService() {
         private var yOffset = 0f
         private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
         private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> reload(); draw() }
+        private val keyguard = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+
+        /** The lock screen always sees the top of the image, whatever the launcher last reported. */
+        private val screenReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) = draw()
+        }
+
+        private fun showingLockScreen(): Boolean {
+            val lockEngine = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                wallpaperFlags and WallpaperManager.FLAG_LOCK != 0 && wallpaperFlags and WallpaperManager.FLAG_SYSTEM == 0
+            return lockEngine || keyguard.isKeyguardLocked
+        }
 
         override fun onCreate(surfaceHolder: SurfaceHolder) {
             super.onCreate(surfaceHolder)
             prefs.register(listener)
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_USER_PRESENT)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) registerReceiver(screenReceiver, filter, RECEIVER_NOT_EXPORTED)
+            else registerReceiver(screenReceiver, filter)
         }
 
         override fun onDestroy() {
+            runCatching { unregisterReceiver(screenReceiver) }
             prefs.unregister(listener)
             bitmap?.recycle()
             bitmap = null
@@ -112,7 +135,7 @@ class CatWallpaperService : WallpaperService() {
                     val slackX = max(0, bmp.width - canvas.width)
                     val slackY = max(0, bmp.height - canvas.height)
                     val left = -(slackX * xOffset).roundToInt()
-                    val top = -(slackY * yOffset).roundToInt()
+                    val top = -(slackY * (if (showingLockScreen()) 0f else yOffset)).roundToInt()
                     canvas.drawColor(Color.BLACK)
                     canvas.drawBitmap(bmp, left.toFloat(), top.toFloat(), paint)
                 }

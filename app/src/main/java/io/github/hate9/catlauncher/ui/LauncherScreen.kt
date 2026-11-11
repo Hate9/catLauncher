@@ -67,6 +67,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.launch
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Lifecycle
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -144,6 +150,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
 
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
 
     var menu by remember { mutableStateOf<MenuState?>(null) }
     var dialog by remember { mutableStateOf<DialogState?>(null) }
@@ -223,6 +230,20 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
             onEnd = vm::endDrag,
             onDragStarted = { menu = null; haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
         )
+    }
+
+    // Back to the top whenever the launcher leaves the foreground: an app launch or the lock screen.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val scrollToTopOnLeave by rememberUpdatedState(config.scrollToTopOnLeave)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP && scrollToTopOnLeave) {
+                menu = null; drag.cancel(); vm.setQuery("")
+                scope.launch { listState.scrollToItem(0) }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // A home screen never finishes on back; back just peels off whatever is open.

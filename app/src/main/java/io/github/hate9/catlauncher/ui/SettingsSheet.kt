@@ -123,6 +123,9 @@ fun SettingsSheet(
             SettingRow("Scroll wallpaper with list", subtitle = "Needs a live wallpaper or one taller than the screen", onClick = { repository.setScrollWallpaper(!config.scrollWallpaper) }) {
                 Switch(checked = config.scrollWallpaper, onCheckedChange = { repository.setScrollWallpaper(it) })
             }
+            SettingRow("Scroll to top when leaving", subtitle = "After launching an app or locking the screen", onClick = { repository.setScrollToTopOnLeave(!config.scrollToTopOnLeave) }) {
+                Switch(checked = config.scrollToTopOnLeave, onCheckedChange = { repository.setScrollToTopOnLeave(it) })
+            }
             SettingRow("Snap to headers", subtitle = snapLabel(config.snapMode), onClick = { choosingSnap = true }) {}
             SettingRow(
                 "Icon pack",
