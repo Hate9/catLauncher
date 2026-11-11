@@ -97,6 +97,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.ColorUtils
 import androidx.compose.ui.zIndex
 import io.github.hate9.catlauncher.data.Category
 import io.github.hate9.catlauncher.data.FAVORITES_ID
@@ -374,8 +375,13 @@ private fun rememberWallpaperDarkText(): Boolean {
     DisposableEffect(context) {
         val wm = WallpaperManager.getInstance(context)
         fun read() {
-            val colors = runCatching { wm.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }.getOrNull()
-            if (colors != null) darkText = colors.colorHints and WallpaperColors.HINT_SUPPORTS_DARK_TEXT != 0
+            val colors = runCatching { wm.getWallpaperColors(WallpaperManager.FLAG_SYSTEM) }.getOrNull() ?: return
+            darkText = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                colors.colorHints and WallpaperColors.HINT_SUPPORTS_DARK_TEXT != 0
+            } else {
+                // Hints are private before 12; judge by the dominant colour's luminance.
+                ColorUtils.calculateLuminance(colors.primaryColor.toArgb()) > 0.5
+            }
         }
         read()
         val listener = WallpaperManager.OnColorsChangedListener { _, which -> if (which and WallpaperManager.FLAG_SYSTEM != 0) read() }
