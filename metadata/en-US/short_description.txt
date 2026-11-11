@@ -1,1 +1,1 @@
-Minimalist Android Launcher | made by Timothy Choi
+Categorised list launcher: drag to arrange, search, widgets, shortcuts

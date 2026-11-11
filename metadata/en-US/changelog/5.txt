@@ -1,0 +1,5 @@
+Forked from tmtLauncher as catLauncher.
+- Arrange categories and items in place: long-press menus and drag to reorder or move.
+- Wallpaper behind the list, search box, scrolling that snaps to headers.
+- Home widgets, app shortcuts, and shortcut pinning from other apps.
+- Config is now JSON with clipboard import/export; the config text screen is gone.

@@ -1,9 +1,5 @@
-Minimalist Android Launcher
+catLauncher is a categorised list launcher, forked from tmtLauncher.
 
-Features:
-* Simple one-dimensional list
-* Labelled groups
-* Lexicographical sorting
+Your apps sit in one scrolling list under labelled category headers, drawn over your wallpaper. Long-press an item to move it, make a new category, or use the app's own shortcuts; long-press and drag to reorder or drop it into another category. Long-press a header to rename, reorder or delete it. Long-press empty space for settings: home widgets, wallpaper, icons, and JSON import/export of your layout.
 
-made by Timothy Choi
-https://tinnamchoi.github.io/
+Also: a search box that filters the list, scrolling that settles on category headers, work-profile apps, and shortcut pinning from other apps.
