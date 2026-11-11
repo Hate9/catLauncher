@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "tmtLauncher"
+rootProject.name = "catLauncher"
 include(":app")

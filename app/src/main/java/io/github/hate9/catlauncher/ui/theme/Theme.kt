@@ -1,4 +1,4 @@
-package com.tinnamchoi.tmtlauncher.ui.theme
+package io.github.hate9.catlauncher.ui.theme
 
 import android.app.Activity
 import android.os.Build
@@ -34,7 +34,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun TmtLauncherTheme(
+fun CatLauncherTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,

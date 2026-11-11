@@ -1,6 +1,7 @@
 /*
-tmtLauncher: Minimalist Android Launcher
-Copyright (C) 2025 Timothy Choi
+catLauncher: a categorised list launcher, forked from tmtLauncher
+Copyright (C) 2025 Timothy Choi (tmtLauncher)
+Copyright (C) 2026 catLauncher contributors
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
@@ -16,15 +17,15 @@ plugins {
 }
 
 android {
-    namespace = "com.tinnamchoi.tmtlauncher"
+    namespace = "io.github.hate9.catlauncher"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.tinnamchoi.tmtlauncher"
+        applicationId = "io.github.hate9.catlauncher"
         minSdk = 21
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.2.1"
+        versionCode = 5
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

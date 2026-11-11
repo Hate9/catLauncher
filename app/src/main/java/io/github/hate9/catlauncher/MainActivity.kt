@@ -1,6 +1,7 @@
 /*
-tmtLauncher: Minimalist Android Launcher
-Copyright (C) 2025 Timothy Choi
+catLauncher: a categorised list launcher, forked from tmtLauncher
+Copyright (C) 2025 Timothy Choi (tmtLauncher)
+Copyright (C) 2026 catLauncher contributors
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
@@ -9,7 +10,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.tinnamchoi.tmtlauncher
+package io.github.hate9.catlauncher
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,7 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.tinnamchoi.tmtlauncher.ui.theme.TmtLauncherTheme
+import io.github.hate9.catlauncher.ui.theme.CatLauncherTheme
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -69,7 +70,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TmtLauncherTheme {
+            CatLauncherTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     TmtLauncher(
                         context = this@MainActivity, modifier = Modifier.padding(innerPadding)

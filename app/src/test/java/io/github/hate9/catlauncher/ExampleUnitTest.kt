@@ -1,4 +1,4 @@
-package com.tinnamchoi.tmtlauncher
+package io.github.hate9.catlauncher
 
 import org.junit.Test
 

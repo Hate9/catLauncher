@@ -1,4 +1,4 @@
-package com.tinnamchoi.tmtlauncher.ui.theme
+package io.github.hate9.catlauncher.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

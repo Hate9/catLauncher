@@ -1,6 +1,7 @@
 /*
-tmtLauncher: Minimalist Android Launcher
-Copyright (C) 2025 Timothy Choi
+catLauncher: a categorised list launcher, forked from tmtLauncher
+Copyright (C) 2025 Timothy Choi (tmtLauncher)
+Copyright (C) 2026 catLauncher contributors
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
@@ -9,7 +10,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.tinnamchoi.tmtlauncher
+package io.github.hate9.catlauncher
 
 import android.content.Context
 import android.content.Intent
@@ -48,7 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import com.tinnamchoi.tmtlauncher.ui.theme.TmtLauncherTheme
+import io.github.hate9.catlauncher.ui.theme.CatLauncherTheme
 import java.io.File
 
 class PreferencesActivity : ComponentActivity() {
@@ -57,7 +58,7 @@ class PreferencesActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TmtLauncherTheme {
+            CatLauncherTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = { TopAppBar(title = { Text("Preferences") }) }) { innerPadding ->
