@@ -184,7 +184,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         fun visible(item: Item) = item.hiddenAt == null
 
         if (q.isEmpty()) {
-            val favorites = cfg.allItems().filter { it.favoritedAt != null && visible(it) }.sortedBy { it.favoritedAt }.toList()
+            // A starred item stays in Favorites even while hidden from its category.
+            val favorites = cfg.allItems().filter { it.favoritedAt != null }.sortedBy { it.favoritedAt }.toList()
             if (favorites.isNotEmpty()) {
                 out += Row.Header(Category(FAVORITES_ID, FAVORITES_NAME, items = favorites), first = true)
                 first = false
