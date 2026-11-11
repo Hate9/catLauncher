@@ -61,6 +61,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -317,7 +318,7 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onGo: () -
 @Composable
 private fun HeaderRow(row: Row.Header, modifier: Modifier, onLongClick: (Offset) -> Unit) {
     var origin by remember { mutableStateOf(Offset.Zero) }
-    var height by remember { mutableStateOf(0) }
+    var height by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     Column(
         modifier
@@ -344,7 +345,7 @@ private fun HeaderRow(row: Row.Header, modifier: Modifier, onLongClick: (Offset)
 @Composable
 private fun EntryRow(row: Row.Entry, showIcon: Boolean, modifier: Modifier, onClick: () -> Unit, onLongClick: (Offset) -> Unit) {
     var origin by remember { mutableStateOf(Offset.Zero) }
-    var height by remember { mutableStateOf(0) }
+    var height by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     Row(
         modifier

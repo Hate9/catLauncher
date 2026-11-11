@@ -109,14 +109,17 @@ class AppSource(private val context: Context) {
             )
         }
         is ItemRef.Shortcut -> {
-            val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) shortcutInfo(ref) else null
-            val label = info?.let { (it.shortLabel ?: it.longLabel)?.toString() } ?: item.label ?: ref.shortcutId
-            val icon = if (!wantIcon) null else when {
-                info != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1 ->
-                    shortcutIcon(info)?.toBitmap(iconPx, iconPx) ?: packageIcon(ref.packageName, ref.userSerial, iconPx)
-                else -> packageIcon(ref.packageName, ref.userSerial, iconPx)
+            var label: String? = null
+            var icon: Bitmap? = null
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+                val info = shortcutInfo(ref)
+                if (info != null) {
+                    label = shortcutLabel(info)
+                    if (wantIcon) icon = shortcutIcon(info)?.toBitmap(iconPx, iconPx)
+                }
             }
-            Resolved(label, icon)
+            if (wantIcon && icon == null) icon = packageIcon(ref.packageName, ref.userSerial, iconPx)
+            Resolved(label ?: item.label ?: ref.shortcutId, icon)
         }
         is ItemRef.IntentShortcut -> {
             val intent = runCatching { Intent.parseUri(ref.intentUri, Intent.URI_INTENT_SCHEME) }.getOrNull()
@@ -167,6 +170,9 @@ class AppSource(private val context: Context) {
             Log.w(TAG, "getShortcuts failed", e); emptyList()
         }
     }
+
+    @RequiresApi(Build.VERSION_CODES.N_MR1)
+    fun shortcutLabel(info: ShortcutInfo): String = (info.shortLabel ?: info.longLabel ?: info.id).toString()
 
     @RequiresApi(Build.VERSION_CODES.N_MR1)
     fun shortcutIcon(info: ShortcutInfo): Drawable? =

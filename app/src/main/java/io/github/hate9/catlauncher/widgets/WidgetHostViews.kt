@@ -72,6 +72,12 @@ class LongPressWidgetHostView(context: Context, private val onLongPress: () -> U
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         // Reached either because we intercepted, or because no child wanted the stream.
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) track(ev) else if (!fired) track(ev)
+        if (ev.actionMasked == MotionEvent.ACTION_UP && !fired) performClick()
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
         return true
     }
 
