@@ -345,7 +345,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
             ) { vm.repository.moveItemToCategory(d.row.item.id, it); dialog = null }
             is DialogState.ChangeIcon -> IconPickerDialog(vm, d.row.item, d.row.label, config.iconPack, onDismiss = { dialog = null })
             is DialogState.RenameItem -> TextInputDialog(
-                "Rename", d.row.label, "Rename",
+                "Rename app", d.row.label, "Rename",
                 onDismiss = { dialog = null },
                 onReset = if (d.row.item.customLabel != null) ({ vm.repository.setItemLabel(d.row.item.id, null); dialog = null }) else null,
             ) { vm.repository.setItemLabel(d.row.item.id, it); dialog = null }
