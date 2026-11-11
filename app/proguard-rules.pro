@@ -19,3 +19,11 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# kotlinx.serialization: keep generated serializers and the companions that expose them.
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.**
+-keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
+-keepclasseswithmembers class kotlinx.serialization.json.** { kotlinx.serialization.KSerializer serializer(...); }
+-keep,includedescriptorclasses class io.github.hate9.catlauncher.**$$serializer { *; }
+-keepclassmembers class io.github.hate9.catlauncher.** { *** Companion; }
+-keepclasseswithmembers class io.github.hate9.catlauncher.** { kotlinx.serialization.KSerializer serializer(...); }
