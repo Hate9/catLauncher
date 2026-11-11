@@ -138,6 +138,10 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
         }
     }
 
+    // Filtering rebuilds the list from the top; without this the widget rows re-inserted above
+    // the anchored first header would land out of sight when the query is cleared.
+    LaunchedEffect(query) { listState.scrollToItem(0) }
+
     // A category created from a menu is inserted above the viewport; bring it into view.
     var scrollToKey by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(scrollToKey, shown) {

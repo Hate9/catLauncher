@@ -70,7 +70,7 @@ fun SettingsSheet(
         Column(Modifier.padding(bottom = 24.dp)) {
             Text("Settings", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
 
-            SettingRow("Show icons") {
+            SettingRow("Show icons", onClick = { repository.setShowIcons(!config.showIcons) }) {
                 Switch(checked = config.showIcons, onCheckedChange = { repository.setShowIcons(it) })
             }
             HorizontalDivider()
@@ -138,10 +138,11 @@ fun SettingsSheet(
 }
 
 @Composable
-private fun SettingRow(title: String, subtitle: String? = null, trailing: @Composable () -> Unit) {
+private fun SettingRow(title: String, subtitle: String? = null, onClick: (() -> Unit)? = null, trailing: @Composable () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 24.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
