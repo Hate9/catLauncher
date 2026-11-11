@@ -41,8 +41,9 @@ class LauncherRepository(context: Context) {
     val config: StateFlow<LauncherConfig> = _config.asStateFlow()
 
     fun update(transform: (LauncherConfig) -> LauncherConfig) {
+        val before = _config.value
         _config.update { transform(it).normalized() }
-        scheduleSave()
+        if (_config.value != before) scheduleSave()
     }
 
     @Synchronized

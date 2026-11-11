@@ -16,6 +16,7 @@ import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -79,6 +80,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -118,6 +120,8 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
     val shown = vm.dragRows ?: rows
     val listState = rememberLazyListState()
 
+    val keyboard = LocalSoftwareKeyboardController.current
+
     var menu by remember { mutableStateOf<MenuState?>(null) }
     var dialog by remember { mutableStateOf<DialogState?>(null) }
     var settingsOpen by remember { mutableStateOf(false) }
@@ -134,6 +138,16 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
             onDragStarted = { menu = null; haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
         )
     }
+
+    // A home screen never finishes on back; back just peels off whatever is open.
+    BackHandler(enabled = true) {
+        when {
+            menu != null -> { menu = null; drag.disarm() }
+            query.isNotEmpty() -> { vm.setQuery(""); keyboard?.hide() }
+            else -> keyboard?.hide()
+        }
+    }
+
     LaunchedEffect(drag) {
         snapshotFlow { drag.autoScroll != 0f }.collectLatest { scrolling ->
             while (scrolling) {
@@ -155,7 +169,10 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
             SearchBar(
                 query = query,
                 onQueryChange = vm::setQuery,
-                onGo = { shown.firstOrNull { it is Row.Entry }?.let { vm.launch((it as Row.Entry).item) } },
+                onGo = {
+                    keyboard?.hide()
+                    shown.firstOrNull { it is Row.Entry }?.let { vm.launch((it as Row.Entry).item) }
+                },
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
             )
             LazyColumn(
@@ -355,7 +372,8 @@ private fun LazyItemScope.WidgetRow(row: Row.Widget, widgets: WidgetController?,
     val widthDp = remember { (context.resources.displayMetrics.widthPixels / context.resources.displayMetrics.density).toInt() - 32 }
     val view = remember(row.entry.appWidgetId, row.entry.heightDp) { widgets?.viewFor(row.entry, widthDp) }
     if (view == null) {
-        LaunchedEffect(row.entry.appWidgetId) { if (widgets != null) vm.repository.removeWidget(row.entry.appWidgetId) }
+        // Provider currently unavailable; WidgetController.startListening prunes widgets that are really gone.
+        Spacer(Modifier.height(1.dp))
         return
     }
     AndroidView(

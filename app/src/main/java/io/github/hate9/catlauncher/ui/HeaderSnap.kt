@@ -51,7 +51,8 @@ fun rememberHeaderSnapFlingBehavior(state: LazyListState, enabled: () -> Boolean
                     velocity > 0 -> upper
                     else -> lower
                 }
-                return chosen
+                // Do not yank the list across more than half a screen just to line up a header.
+                return if (abs(chosen) > layout.viewportSize.height / 2f) 0f else chosen
             }
         }
     }

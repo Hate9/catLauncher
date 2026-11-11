@@ -177,10 +177,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         dragRows = rows.value
     }
 
-    /** Moves the row at [from] to [to] in the working copy. Returns false when the move is not allowed. */
-    fun moveRow(from: Int, to: Int): Boolean {
+    /**
+     * Moves the row at [from] to [to] in the working copy. [key] must still be at [from]: the
+     * list layout lags a frame behind the copy, so a stale request is ignored rather than
+     * swapping the rows back.
+     */
+    fun moveRow(key: String, from: Int, to: Int): Boolean {
         val list = dragRows?.toMutableList() ?: return false
         if (from !in list.indices || to !in list.indices || from == to) return false
+        if (list[from].key != key) return false
         val firstHeader = list.indexOfFirst { it is Row.Header }
         if (to <= firstHeader) return false
         if (list[to] !is Row.Entry && list[to] !is Row.Header) return false

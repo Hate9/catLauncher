@@ -32,7 +32,7 @@ class DragController(
     private val thresholdPx: Float,
     private val edgePx: Float,
     private val onBegin: () -> Unit,
-    private val onMove: (from: Int, to: Int) -> Boolean,
+    private val onMove: (key: String, from: Int, to: Int) -> Boolean,
     private val onEnd: (commit: Boolean) -> Unit,
     private val onDragStarted: () -> Unit,
 ) {
@@ -124,7 +124,7 @@ class DragController(
             if (target != null) {
                 val targetMid = target.offset + target.size / 2f
                 val crossing = (target.index > dragged.index && mid > targetMid) || (target.index < dragged.index && mid < targetMid)
-                if (crossing) onMove(dragged.index, target.index)
+                if (crossing) onMove(key, dragged.index, target.index)
             }
         }
         autoScroll = when {
