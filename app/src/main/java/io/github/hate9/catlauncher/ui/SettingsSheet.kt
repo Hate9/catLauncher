@@ -83,6 +83,9 @@ fun SettingsSheet(
             SettingRow("Show hidden", subtitle = "List hidden apps in a block at the bottom", onClick = { repository.setShowHidden(!config.showHidden) }) {
                 Switch(checked = config.showHidden, onCheckedChange = { repository.setShowHidden(it) })
             }
+            SettingRow("Scroll wallpaper with list", subtitle = "Needs a live wallpaper or one taller than the screen", onClick = { repository.setScrollWallpaper(!config.scrollWallpaper) }) {
+                Switch(checked = config.scrollWallpaper, onCheckedChange = { repository.setScrollWallpaper(it) })
+            }
             SettingRow("Snap to headers", subtitle = snapLabel(config.snapMode), onClick = { choosingSnap = true }) {}
             SettingRow(
                 "Icon pack",

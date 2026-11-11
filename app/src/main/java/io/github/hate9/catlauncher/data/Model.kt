@@ -134,6 +134,8 @@ data class LauncherConfig(
     val showHidden: Boolean = false,
     /** Header snapping: [SNAP_BOTH], [SNAP_DOWN] (only when flinging towards the end) or [SNAP_OFF]. */
     val snapMode: String = SNAP_DOWN,
+    /** Pan the wallpaper vertically with the list (live wallpapers, or static ones taller than the screen). */
+    val scrollWallpaper: Boolean = true,
 ) {
     val uncategorized: Category get() = categories.last { it.isUncategorized }
 

@@ -91,6 +91,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -157,6 +158,32 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
         if (listState.isScrollInProgress) {
             focusManager.clearFocus()
             keyboard?.hide()
+        }
+    }
+
+    // Wallpaper parallax: the list's scroll fraction becomes the wallpaper's vertical offset.
+    val view = LocalView.current
+    LaunchedEffect(config.scrollWallpaper) {
+        val wm = WallpaperManager.getInstance(context)
+        if (!config.scrollWallpaper) {
+            runCatching { view.windowToken?.let { wm.setWallpaperOffsets(it, 0.5f, 0f) } }
+            return@LaunchedEffect
+        }
+        snapshotFlow {
+            val info = listState.layoutInfo
+            val visible = info.visibleItemsInfo
+            if (visible.isEmpty() || info.totalItemsCount == 0) 0f else {
+                val avg = visible.sumOf { it.size }.toFloat() / visible.size
+                val scrolled = listState.firstVisibleItemIndex * avg + listState.firstVisibleItemScrollOffset
+                val total = info.totalItemsCount * avg - info.viewportSize.height
+                if (total <= 0f) 0f else (scrolled / total).coerceIn(0f, 1f)
+            }
+        }.collect { fraction ->
+            val token = view.windowToken ?: return@collect
+            runCatching {
+                wm.setWallpaperOffsetSteps(1f, 1f)
+                wm.setWallpaperOffsets(token, 0.5f, fraction)
+            }
         }
     }
 
