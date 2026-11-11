@@ -45,6 +45,7 @@ class LauncherRepository(context: Context) {
         scheduleSave()
     }
 
+    @Synchronized
     private fun scheduleSave() {
         saveJob?.cancel()
         saveJob = scope.launch {
