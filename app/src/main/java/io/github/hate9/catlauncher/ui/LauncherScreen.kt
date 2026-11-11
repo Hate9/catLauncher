@@ -22,6 +22,12 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
@@ -53,12 +59,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -140,6 +142,14 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
     // Dialogs leave the IME attached and focus falls into the search field; tidy up when they close.
     LaunchedEffect(dialog == null, settingsOpen) {
         if (dialog == null && !settingsOpen) {
+            focusManager.clearFocus()
+            keyboard?.hide()
+        }
+    }
+
+    // Touching the list ends search-field editing.
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress) {
             focusManager.clearFocus()
             keyboard?.hide()
         }
@@ -260,7 +270,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                 ItemMenu(vm, m.row, onClose = { menu = null; drag.disarm() }, onDialog = { dialog = it })
             }
             is MenuState.ForHeader -> ContextMenuOverlay(anchor = m.anchor, onDismiss = { menu = null }) {
-                HeaderMenu(vm, config.categories, m.category, onClose = { menu = null }, onDialog = { dialog = it })
+                HeaderMenu(vm, config.categories, m.category, onClose = { menu = null }, onDialog = { dialog = it }, onSettings = { settingsOpen = true })
             }
             null -> {}
         }
@@ -366,25 +376,43 @@ private suspend fun PointerInputScope.trackDrag(drag: DragController) {
 
 @Composable
 private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onGo: () -> Unit, modifier: Modifier = Modifier) {
-    TextField(
+    val textColor = launcherTextColor()
+    BasicTextField(
         value = query,
         onValueChange = onQueryChange,
         singleLine = true,
-        placeholder = { Text("Search") },
-        trailingIcon = if (query.isNotEmpty()) {
-            { IconButton(onClick = { onQueryChange("") }) { Text("✕") } }
-        } else null,
+        textStyle = TextStyle(color = textColor, fontSize = 16.sp),
+        cursorBrush = SolidColor(textColor),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
         keyboardActions = KeyboardActions(onGo = { onGo() }),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.4f),
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-        ),
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = ROW_INSET, vertical = 6.dp),
+        decorationBox = { inner ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+                    .background(textColor.copy(alpha = 0.12f), RoundedCornerShape(18.dp))
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.weight(1f)) {
+                    if (query.isEmpty()) Text("Search", color = textColor.copy(alpha = 0.6f), fontSize = 16.sp)
+                    inner()
+                }
+                if (query.isNotEmpty()) {
+                    Text(
+                        "✕",
+                        color = textColor,
+                        fontSize = 16.sp,
+                        modifier = Modifier
+                            .clickable { onQueryChange("") }
+                            .padding(start = 8.dp),
+                    )
+                }
+            }
+        },
     )
 }
 
@@ -429,7 +457,7 @@ private fun EntryRow(row: Row.Entry, showIcon: Boolean, modifier: Modifier, onCl
                 onClick = onClick,
                 onLongClick = { onLongClick(Offset(origin.x + with(density) { ROW_INSET.toPx() }, origin.y + height)) },
             )
-            .padding(horizontal = ROW_INSET, vertical = 4.dp),
+            .padding(horizontal = ROW_INSET, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showIcon) {
@@ -496,7 +524,7 @@ private fun ItemMenu(vm: LauncherViewModel, row: Row.Entry, onClose: () -> Unit,
 }
 
 @Composable
-private fun HeaderMenu(vm: LauncherViewModel, categories: List<Category>, category: Category, onClose: () -> Unit, onDialog: (DialogState) -> Unit) {
+private fun HeaderMenu(vm: LauncherViewModel, categories: List<Category>, category: Category, onClose: () -> Unit, onDialog: (DialogState) -> Unit, onSettings: () -> Unit) {
     val movable = categories.filter { !it.isUncategorized }
     val index = movable.indexOfFirst { it.id == category.id }
     MenuTitle(category.name)
@@ -508,4 +536,6 @@ private fun HeaderMenu(vm: LauncherViewModel, categories: List<Category>, catego
     MenuItem("New category…") { onDialog(DialogState.NewCategory(null)); onClose() }
     if (category.manual) MenuItem("Reset to automatic order") { vm.repository.resetCategoryOrder(category.id); onClose() }
     if (!category.isUncategorized) MenuItem("Delete…") { onDialog(DialogState.Delete(category)); onClose() }
+    HorizontalDivider()
+    MenuItem("Settings…") { onSettings(); onClose() }
 }
