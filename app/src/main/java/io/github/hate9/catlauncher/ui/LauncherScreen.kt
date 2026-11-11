@@ -92,7 +92,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -223,7 +222,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
             )
             LazyColumn(
                 state = listState,
-                flingBehavior = rememberHeaderSnapFlingBehavior(listState, headerTopGapPx = with(density) { HEADER_TOP_GAP.toPx() }) { !drag.isActive && query.isBlank() },
+                flingBehavior = rememberHeaderSnapFlingBehavior(listState, headerTopGapPx = with(density) { HEADER_TOP_GAP.toPx() }, rows = { shown }) { !drag.isActive && query.isBlank() },
                 contentPadding = PaddingValues(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
                 modifier = Modifier
                     .weight(1f)
@@ -293,9 +292,11 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                 "Delete \"${d.category.name}\"?", "Its ${d.category.items.size} items move to $UNCATEGORIZED_LABEL.", "Delete",
                 onDismiss = { dialog = null },
             ) { vm.repository.deleteCategory(d.category.id); dialog = null }
-            is DialogState.MoveTo -> ChooseCategoryDialog(config.categories, d.row.categoryId, onDismiss = { dialog = null }) {
-                vm.repository.moveItemToCategory(d.row.item.id, it); dialog = null
-            }
+            is DialogState.MoveTo -> ChooseCategoryDialog(
+                config.categories, d.row.categoryId,
+                onDismiss = { dialog = null },
+                onNewCategory = { dialog = DialogState.NewCategory(d.row.item.id) },
+            ) { vm.repository.moveItemToCategory(d.row.item.id, it); dialog = null }
             null -> {}
         }
 
@@ -472,7 +473,6 @@ private fun HeaderRow(row: Row.Header, modifier: Modifier, onLongClick: (Offset)
         Text(
             text = row.category.name,
             fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
             color = launcherTextColor(),
             style = launcherTextStyle(),
             modifier = Modifier.padding(horizontal = ROW_INSET),
@@ -548,7 +548,6 @@ private fun ItemMenu(vm: LauncherViewModel, row: Row.Entry, onClose: () -> Unit,
         if (shortcuts.isNotEmpty()) HorizontalDivider()
     }
     MenuItem("Move to category…") { onDialog(DialogState.MoveTo(row)); onClose() }
-    MenuItem("New category…") { onDialog(DialogState.NewCategory(row.item.id)); onClose() }
     if (ref !is ItemRef.IntentShortcut) MenuItem("App info") { vm.repository.apps.openAppInfo(ref); onClose() }
     when (ref) {
         is ItemRef.App -> MenuItem("Uninstall") {

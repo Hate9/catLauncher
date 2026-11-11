@@ -15,20 +15,76 @@ package io.github.hate9.catlauncher.ui
 import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import kotlin.math.abs
 
 /**
- * Lets a fling decay normally, then settles so the nearest visible category header sits at the
- * top of the viewport. With no header in view the list stays where the fling left it.
+ * Category-header snapping.
+ *
+ * A fling lands on the next header in the direction of travel, whether the decay would have
+ * stopped short of it or sailed past. Headers that are not yet composed have their position
+ * estimated from the average sizes of the rows that are, and the final snap step corrects the
+ * estimate once the header is on screen. A slow release (no real fling) settles on the nearest
+ * header within half a viewport, or stays put.
  */
 @Composable
-fun rememberHeaderSnapFlingBehavior(state: LazyListState, headerTopGapPx: Float, enabled: () -> Boolean): FlingBehavior {
+fun rememberHeaderSnapFlingBehavior(
+    state: LazyListState,
+    headerTopGapPx: Float,
+    rows: () -> List<Row>,
+    enabled: () -> Boolean,
+): FlingBehavior {
     val provider = remember(state, headerTopGapPx) {
         object : SnapLayoutInfoProvider {
-            override fun calculateApproachOffset(velocity: Float, decayOffset: Float): Float = decayOffset
+            private val LazyListItemInfo.isHeader get() = (key as? String)?.startsWith("h:") == true
+
+            override fun calculateApproachOffset(velocity: Float, decayOffset: Float): Float {
+                if (!enabled()) return decayOffset
+                val layout = state.layoutInfo
+                val visible = layout.visibleItemsInfo
+                if (visible.isEmpty()) return decayOffset
+                // Treat anything shorter than a quarter viewport as a nudge, not a fling.
+                if (abs(decayOffset) < layout.viewportSize.height / 4f) return decayOffset
+                val start = layout.viewportStartOffset
+                val forward = decayOffset > 0
+                val list = rows()
+
+                val headerSize = (visible.filter { it.isHeader }.map { it.size }.average().takeIf { !it.isNaN() } ?: 144.0).toFloat()
+                val rowSize = (visible.filter { !it.isHeader }.map { it.size }.average().takeIf { !it.isNaN() } ?: 120.0).toFloat()
+                fun estimate(index: Int) = if (list.getOrNull(index) is Row.Header) headerSize else rowSize
+
+                val target: Float? = if (forward) {
+                    visible.firstOrNull { it.isHeader && it.offset > start + 1 }?.let { it.offset.toFloat() } ?: run {
+                        val last = visible.last()
+                        var y = (last.offset + last.size).toFloat()
+                        var i = last.index + 1
+                        var found: Float? = null
+                        while (i < list.size) {
+                            if (list[i] is Row.Header) { found = y; break }
+                            y += estimate(i); i++
+                        }
+                        found
+                    }
+                } else {
+                    visible.lastOrNull { it.isHeader && it.offset < start - 1 }?.let { it.offset.toFloat() } ?: run {
+                        val first = visible.first()
+                        var y = first.offset.toFloat()
+                        var i = first.index - 1
+                        var found: Float? = null
+                        while (i >= 0) {
+                            y -= estimate(i)
+                            if (list[i] is Row.Header) { found = y; break }
+                            i--
+                        }
+                        found
+                    }
+                }
+                if (target == null) return decayOffset
+                return target + headerTopGapPx - start
+            }
 
             override fun calculateSnapOffset(velocity: Float): Float {
                 if (!enabled()) return 0f
@@ -37,10 +93,7 @@ fun rememberHeaderSnapFlingBehavior(state: LazyListState, headerTopGapPx: Float,
                 var lower = Float.NEGATIVE_INFINITY
                 var upper = Float.POSITIVE_INFINITY
                 for (item in layout.visibleItemsInfo) {
-                    val key = item.key as? String ?: continue
-                    // Headers snap, and so does the very start of the list so the widget area
-                    // above the first header stays reachable.
-                    val isHeader = key.startsWith("h:")
+                    val isHeader = item.isHeader
                     if (!isHeader && item.index != 0) continue
                     // Land the divider at the top, not the breathing room above it.
                     val target = item.offset + if (isHeader) headerTopGapPx else 0f

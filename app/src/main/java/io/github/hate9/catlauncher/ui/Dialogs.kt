@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -94,6 +95,7 @@ fun ChooseCategoryDialog(
     categories: List<Category>,
     currentId: String,
     onDismiss: () -> Unit,
+    onNewCategory: () -> Unit,
     onChoose: (String) -> Unit,
 ) {
     AlertDialog(
@@ -113,6 +115,14 @@ fun ChooseCategoryDialog(
                         Text(c.name, modifier = Modifier.padding(start = 8.dp))
                     }
                 }
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                Text(
+                    "New category…",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onNewCategory)
+                        .padding(vertical = 8.dp),
+                )
             }
         },
         confirmButton = {},
