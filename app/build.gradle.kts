@@ -17,6 +17,22 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Version from the nearest git tag so releases line up with what was tagged:
+// v2.0.4 -> versionName "2.0.4", versionCode 20004 (major*10000 + minor*100 + patch).
+// Untagged commits get "2.0.4-3-gabc1234"; -PversionName=... / -PversionCode=... override both.
+val gitDescribe: String = providers.exec {
+    commandLine("git", "describe", "--tags", "--match", "v*", "--always", "--dirty")
+    isIgnoreExitValue = true
+}.standardOutput.asText.map { it.trim() }.getOrElse("").ifEmpty { "v0.0.0" }
+val tagMatch = Regex("v(\\d+)\\.(\\d+)\\.(\\d+)(?:-(\\d+)-g[0-9a-f]+)?(-dirty)?").matchEntire(gitDescribe)
+val derivedVersionName = tagMatch?.let { m ->
+    val base = "${m.groupValues[1]}.${m.groupValues[2]}.${m.groupValues[3]}"
+    base + gitDescribe.removePrefix("v").removePrefix(base)
+} ?: "0.0.0-$gitDescribe"
+val derivedVersionCode = tagMatch?.let { m ->
+    m.groupValues[1].toInt() * 10000 + m.groupValues[2].toInt() * 100 + m.groupValues[3].toInt()
+} ?: 1
+
 android {
     namespace = "io.github.hate9.catlauncher"
     compileSdk = 36
@@ -25,8 +41,8 @@ android {
         applicationId = "io.github.hate9.catlauncher"
         minSdk = 21
         targetSdk = 36
-        versionCode = 5
-        versionName = "2.0.0"
+        versionCode = (findProperty("versionCode") as String?)?.toInt() ?: derivedVersionCode
+        versionName = (findProperty("versionName") as String?) ?: derivedVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
