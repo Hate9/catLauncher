@@ -237,9 +237,22 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
     val scrollToTopOnLeave by rememberUpdatedState(config.scrollToTopOnLeave)
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP && scrollToTopOnLeave) {
-                menu = null; drag.cancel(); vm.setQuery("")
-                scope.launch { listState.scrollToItem(0) }
+            when (event) {
+                Lifecycle.Event.ON_STOP -> {
+                    // Compose restores focus to the last focused node when the window comes back,
+                    // which would re-open the search field; drop it before leaving and after returning.
+                    focusManager.clearFocus()
+                    keyboard?.hide()
+                    if (scrollToTopOnLeave) {
+                        menu = null; drag.cancel(); vm.setQuery("")
+                        scope.launch { listState.scrollToItem(0) }
+                    }
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    focusManager.clearFocus()
+                    keyboard?.hide()
+                }
+                else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
