@@ -162,9 +162,10 @@ data class LauncherConfig(
         val others = categories.filter { !it.isUncategorized }.map { c ->
             c.copy(items = c.items.filter { seen.add(it.id) })
         }
-        val unc = categories.filter { it.isUncategorized }
-            .fold(Category.uncategorized()) { acc, c -> acc.copy(items = acc.items + c.items) }
-            .let { c -> c.copy(items = c.items.filter { seen.add(it.id) }) }
+        // Keep the first Uncategorized's own fields (icon, manual order); merge any duplicates' items.
+        val uncs = categories.filter { it.isUncategorized }
+        val base = uncs.firstOrNull() ?: Category.uncategorized()
+        val unc = base.copy(name = UNCATEGORIZED_NAME, items = uncs.flatMap { it.items }.filter { seen.add(it.id) })
         return copy(categories = others + unc)
     }
 

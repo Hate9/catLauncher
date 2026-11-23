@@ -145,6 +145,7 @@ private sealed interface DialogState {
 private fun categoryIcon(c: Category) = when (c.id) {
     FAVORITES_ID -> CategoryIcons.favorites
     HIDDEN_ID -> CategoryIcons.hidden
+    UNCATEGORIZED_ID -> CategoryIcons[c.icon] ?: CategoryIcons.unsorted
     else -> CategoryIcons[c.icon]
 }
 
@@ -634,10 +635,6 @@ private fun HeaderRow(row: Row.Header, modifier: Modifier, endInset: Dp = 0.dp, 
         HorizontalDivider(color = launcherTextColor().copy(alpha = 0.4f))
         Spacer(Modifier.height(8.dp))
         Row(Modifier.padding(start = ROW_INSET, end = ROW_INSET + endInset), verticalAlignment = Alignment.CenterVertically) {
-            categoryIcon(row.category)?.let { icon ->
-                androidx.compose.material3.Icon(icon, contentDescription = null, tint = launcherTextColor(), modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(8.dp))
-            }
             Text(
                 text = row.category.name,
                 fontSize = 22.sp,

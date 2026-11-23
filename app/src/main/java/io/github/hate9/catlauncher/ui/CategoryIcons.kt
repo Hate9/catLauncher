@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 object CategoryIcons {
     val home: ImageVector = Icons.Rounded.Home
     val favorites: ImageVector = Icons.Rounded.Star
+    val unsorted: ImageVector = Icons.Rounded.Inbox
     val hidden: ImageVector = Icons.Rounded.VisibilityOff
 
     val all: List<Pair<String, ImageVector>> = listOf(
@@ -30,7 +31,7 @@ object CategoryIcons {
         "home" to Icons.Rounded.Home, "star" to Icons.Rounded.Star, "favorite" to Icons.Rounded.Favorite,
         "apps" to Icons.Rounded.Apps, "grid" to Icons.Rounded.GridView, "widgets" to Icons.Rounded.Widgets,
         "dashboard" to Icons.Rounded.Dashboard, "category" to Icons.Rounded.Category, "label" to Icons.Rounded.Label,
-        "bookmark" to Icons.Rounded.Bookmark, "flag" to Icons.Rounded.Flag, "more" to Icons.Rounded.MoreHoriz,
+        "bookmark" to Icons.Rounded.Bookmark, "inbox" to Icons.Rounded.Inbox, "flag" to Icons.Rounded.Flag, "more" to Icons.Rounded.MoreHoriz,
         "settings" to Icons.Rounded.Settings, "build" to Icons.Rounded.Build, "tune" to Icons.Rounded.Tune,
         "extension" to Icons.Rounded.Extension, "inventory" to Icons.Rounded.Inventory2, "archive" to Icons.Rounded.Archive,
         "history" to Icons.Rounded.History, "schedule" to Icons.Rounded.Schedule, "alarm" to Icons.Rounded.Alarm,

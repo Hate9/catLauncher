@@ -39,6 +39,16 @@ class ConfigTest {
     }
 
     @Test
+    fun normalizedKeepsUncategorizedIconAndOrder() {
+        val cfg = LauncherConfig(
+            categories = listOf(Category.uncategorized(listOf(app("b", 2), app("a", 1))).copy(icon = "inbox", manual = true))
+        ).normalized()
+        assertEquals("inbox", cfg.uncategorized.icon)
+        assertTrue(cfg.uncategorized.manual)
+        assertEquals(listOf("b", "a"), cfg.uncategorized.items.map { it.ref.packageName })
+    }
+
+    @Test
     fun decodeToleratesMissingFields() {
         val cfg = ConfigStore.decode("""{"categories":[{"id":"x","name":"X"}]}""")
         assertEquals("X", cfg.categories[0].name)
