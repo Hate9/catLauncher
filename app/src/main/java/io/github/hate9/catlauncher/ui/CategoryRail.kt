@@ -21,10 +21,12 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -88,8 +90,15 @@ fun CategoryRail(
         return bounds.entries.minByOrNull { (_, b) -> kotlin.math.abs((b.first + b.second) / 2f - y) }?.key ?: -1
     }
 
+    BoxWithConstraints(modifier) {
+    // Compress rather than scroll when there are more entries than fit: the scrub gesture owns
+    // the touch stream, so a scrolling rail would be unreachable past the fold.
+    val available = maxHeight - 12.dp
+    val entryHeight = (available / entries.size.coerceAtLeast(1)).coerceIn(18.dp, 38.dp)
+    val iconSize = (entryHeight * 0.62f).coerceIn(12.dp, 24.dp)
+    val fontSize = (entryHeight.value * 0.42f).coerceIn(9f, 16f).sp
     Column(
-        modifier
+        Modifier
             .width(RAIL_RESERVED_WIDTH - 16.dp)
             // No fill: instead knock a rounded hole through whatever the list drew underneath
             // (the parent composites offscreen), so dividers stop at the rail like an opaque
@@ -107,7 +116,6 @@ fun CategoryRail(
                 }
                 drawPath(path, Color.Black, blendMode = BlendMode.Clear)
             }
-            .verticalScroll(rememberScrollState())
             .padding(vertical = 6.dp)
             .pointerInput(entries) {
                 awaitEachGesture {
@@ -134,26 +142,31 @@ fun CategoryRail(
         entries.forEachIndexed { i, entry ->
             val active = i == current || i == last
             val color = if (active) textColor else textColor.copy(alpha = 0.75f)
-            val cell = Modifier
-                .onGloballyPositioned { c ->
-                    val top = c.positionInParent().y
-                    bounds[i] = top to top + c.size.height
+            Box(
+                Modifier
+                    .onGloballyPositioned { c ->
+                        val top = c.positionInParent().y
+                        bounds[i] = top to top + c.size.height
+                    }
+                    .height(entryHeight)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (entry.icon != null) {
+                    Icon(entry.icon, contentDescription = entry.name, tint = color, modifier = Modifier.size(if (active) iconSize * 1.15f else iconSize))
+                } else {
+                    Text(
+                        text = entry.initial,
+                        color = color,
+                        style = textStyle,
+                        fontSize = if (active) fontSize * 1.15f else fontSize,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        modifier = Modifier.semantics { contentDescription = entry.name },
+                    )
                 }
-                .align(Alignment.CenterHorizontally)
-                .padding(vertical = 6.dp)
-            if (entry.icon != null) {
-                Icon(entry.icon, contentDescription = entry.name, tint = color, modifier = cell.size(if (active) 26.dp else 22.dp))
-            } else {
-                Text(
-                    text = entry.initial,
-                    color = color,
-                    style = textStyle,
-                    fontSize = if (active) 17.sp else 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    modifier = cell.semantics { contentDescription = entry.name },
-                )
             }
         }
+    }
     }
 }
