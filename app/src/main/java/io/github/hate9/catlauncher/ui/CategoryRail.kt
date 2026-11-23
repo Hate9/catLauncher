@@ -22,6 +22,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.Alignment
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,13 +47,16 @@ import androidx.compose.ui.unit.sp
 /** Width the list reserves on the right so row labels stay clear of the rail. */
 val RAIL_RESERVED_WIDTH = 96.dp
 
+/** One rail entry: an icon when the category has one, otherwise its name. */
+data class RailEntry(val name: String, val icon: ImageVector?)
+
 /**
  * A stack of category names on the right edge. Tap one to jump to it; drag along the stack to
  * scrub. [current] is the index of the category at the top of the viewport.
  */
 @Composable
 fun CategoryRail(
-    names: List<String>,
+    entries: List<RailEntry>,
     current: Int,
     textColor: Color,
     textStyle: TextStyle,
@@ -75,7 +82,7 @@ fun CategoryRail(
             .background(textColor.copy(alpha = 0.10f), RoundedCornerShape(14.dp))
             .verticalScroll(rememberScrollState())
             .padding(vertical = 6.dp)
-            .pointerInput(names) {
+            .pointerInput(entries) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     down.consume()
@@ -97,24 +104,30 @@ fun CategoryRail(
                 }
             },
     ) {
-        val arr = FloatArray(names.size * 2)
-        names.forEachIndexed { i, name ->
+        val arr = FloatArray(entries.size * 2)
+        entries.forEachIndexed { i, entry ->
             val active = i == current || i == last
-            Text(
-                text = name,
-                color = if (active) textColor else textColor.copy(alpha = 0.75f),
-                style = textStyle,
-                fontSize = if (active) 13.sp else 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .onGloballyPositioned { c ->
-                        val top = c.positionInParent().y
-                        arr[i * 2] = top; arr[i * 2 + 1] = top + c.size.height
-                        if (i == names.lastIndex) bounds.value = arr.copyOf()
-                    }
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
-            )
+            val color = if (active) textColor else textColor.copy(alpha = 0.75f)
+            val cell = Modifier
+                .onGloballyPositioned { c ->
+                    val top = c.positionInParent().y
+                    arr[i * 2] = top; arr[i * 2 + 1] = top + c.size.height
+                    if (i == entries.lastIndex) bounds.value = arr.copyOf()
+                }
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+            if (entry.icon != null) {
+                Icon(entry.icon, contentDescription = entry.name, tint = color, modifier = cell.align(Alignment.CenterHorizontally).size(if (active) 24.dp else 21.dp))
+            } else {
+                Text(
+                    text = entry.name,
+                    color = color,
+                    style = textStyle,
+                    fontSize = if (active) 13.sp else 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = cell,
+                )
+            }
         }
     }
 }

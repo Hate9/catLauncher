@@ -102,6 +102,8 @@ data class Category(
     /** False: `items` is in addedAt order (newest last). True: the user has arranged it by hand. */
     val manual: Boolean = false,
     val items: List<Item> = emptyList(),
+    /** Name of a Material icon from CategoryIcons, shown in the rail and beside the header. */
+    val icon: String? = null,
 ) {
     val isUncategorized: Boolean get() = id == UNCATEGORIZED_ID
 

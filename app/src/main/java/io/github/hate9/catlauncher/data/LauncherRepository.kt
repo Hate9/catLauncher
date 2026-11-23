@@ -143,6 +143,8 @@ class LauncherRepository(context: Context) {
         if (categoryId == UNCATEGORIZED_ID) cfg else cfg.mapCategory(categoryId) { it.copy(name = name.trim().ifEmpty { it.name }) }
     }
 
+    fun setCategoryIcon(categoryId: String, icon: String?) = update { cfg -> cfg.mapCategory(categoryId) { it.copy(icon = icon) } }
+
     /** Deleting a category drops its items into Uncategorized. */
     fun deleteCategory(categoryId: String) = update { cfg ->
         val victim = cfg.category(categoryId) ?: return@update cfg

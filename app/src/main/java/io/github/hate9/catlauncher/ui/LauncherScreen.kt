@@ -135,6 +135,14 @@ private sealed interface DialogState {
     data class MoveTo(val row: Row.Entry) : DialogState
     data class ChangeIcon(val row: Row.Entry) : DialogState
     data class RenameItem(val row: Row.Entry) : DialogState
+    data class CategoryIcon(val category: Category) : DialogState
+}
+
+/** The icon a category shows, if any: the user's pick, or the fixed ones for the virtual blocks. */
+private fun categoryIcon(c: Category) = when (c.id) {
+    FAVORITES_ID -> CategoryIcons.favorites
+    HIDDEN_ID -> CategoryIcons.hidden
+    else -> CategoryIcons[c.icon]
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -376,7 +384,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
             }
             if (railVisible && headerIndices.size > 1) {
                 CategoryRail(
-                    names = headerIndices.map { (shown[it] as Row.Header).category.name },
+                    entries = headerIndices.map { val c = (shown[it] as Row.Header).category; RailEntry(c.name, categoryIcon(c)) },
                     current = currentHeader,
                     textColor = launcherTextColor(),
                     textStyle = launcherTextStyle(),
@@ -417,6 +425,9 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                 onNewCategory = { dialog = DialogState.NewCategory(d.row.item.id) },
             ) { vm.repository.moveItemToCategory(d.row.item.id, it); dialog = null }
             is DialogState.ChangeIcon -> IconPickerDialog(vm, d.row.item, d.row.label, config.iconPack, onDismiss = { dialog = null })
+            is DialogState.CategoryIcon -> CategoryIconDialog(d.category.name, d.category.icon, onDismiss = { dialog = null }) {
+                vm.repository.setCategoryIcon(d.category.id, it); dialog = null
+            }
             is DialogState.RenameItem -> TextInputDialog(
                 "Rename app", d.row.label, "Rename",
                 onDismiss = { dialog = null },
@@ -600,13 +611,18 @@ private fun HeaderRow(row: Row.Header, modifier: Modifier, onLongClick: (Offset)
         Spacer(Modifier.height(HEADER_TOP_GAP))
         HorizontalDivider(color = launcherTextColor().copy(alpha = 0.4f))
         Spacer(Modifier.height(8.dp))
-        Text(
-            text = row.category.name,
-            fontSize = 22.sp,
-            color = launcherTextColor(),
-            style = launcherTextStyle(),
-            modifier = Modifier.padding(horizontal = ROW_INSET),
-        )
+        Row(Modifier.padding(horizontal = ROW_INSET), verticalAlignment = Alignment.CenterVertically) {
+            categoryIcon(row.category)?.let { icon ->
+                androidx.compose.material3.Icon(icon, contentDescription = null, tint = launcherTextColor(), modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(
+                text = row.category.name,
+                fontSize = 22.sp,
+                color = launcherTextColor(),
+                style = launcherTextStyle(),
+            )
+        }
         Spacer(Modifier.height(2.dp))
     }
 }
@@ -709,6 +725,7 @@ private fun HeaderMenu(vm: LauncherViewModel, categories: List<Category>, catego
         MenuItem("Hidden apps; turn off \"Show hidden\" in settings to tuck them away.", enabled = false) {}
         return
     }
+    MenuItem("Set icon…") { onDialog(DialogState.CategoryIcon(category)); onClose() }
     if (!category.isUncategorized) {
         MenuItem("Rename…") { onDialog(DialogState.Rename(category)); onClose() }
         MenuItem("Move up", enabled = index > 0) { vm.repository.moveCategory(category.id, -1); onClose() }
