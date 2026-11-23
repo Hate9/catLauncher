@@ -67,6 +67,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import kotlinx.coroutines.launch
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.Lifecycle
@@ -307,6 +308,15 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                 },
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
             )
+            val railVisible = config.showRail && query.isBlank() && drag.draggingKey == null
+            val headerIndices = remember(shown) { shown.withIndex().filter { it.value is Row.Header }.map { it.index } }
+            val currentHeader by remember(headerIndices) {
+                derivedStateOf {
+                    val first = listState.firstVisibleItemIndex
+                    headerIndices.indexOfLast { it <= first }.coerceAtLeast(0)
+                }
+            }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(
                 state = listState,
                 flingBehavior = rememberHeaderSnapFlingBehavior(listState, headerTopGapPx = with(density) { HEADER_TOP_GAP.toPx() }, rows = { shown }) { forward ->
@@ -316,10 +326,12 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                         else -> true
                     }
                 },
-                contentPadding = PaddingValues(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+                contentPadding = PaddingValues(
+                    end = if (railVisible) RAIL_RESERVED_WIDTH else 0.dp,
+                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                ),
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .pointerInput(drag) { trackDrag(drag) }
                     .pointerInput(listState) {
                         detectTapGestures(onLongPress = { pos ->
@@ -361,6 +373,20 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                         }
                     }
                 }
+            }
+            if (railVisible && headerIndices.size > 1) {
+                CategoryRail(
+                    names = headerIndices.map { (shown[it] as Row.Header).category.name },
+                    current = currentHeader,
+                    textColor = launcherTextColor(),
+                    textStyle = launcherTextStyle(),
+                    onSelect = { i -> scope.launch { listState.scrollToItem(headerIndices[i]) } },
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 6.dp)
+                        .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+                )
+            }
             }
         }
 

@@ -140,6 +140,8 @@ data class LauncherConfig(
     val scrollWallpaper: Boolean = true,
     /** Return the list to the top whenever the launcher leaves the foreground (app launch, lock). */
     val scrollToTopOnLeave: Boolean = true,
+    /** Category names down the right edge for jumping between categories. */
+    val showRail: Boolean = true,
 ) {
     val uncategorized: Category get() = categories.last { it.isUncategorized }
 
