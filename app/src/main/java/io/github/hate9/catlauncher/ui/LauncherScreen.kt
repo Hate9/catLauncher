@@ -414,7 +414,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                     onSelect = { i -> scope.launch { listState.scrollToItem(railTargets[i].first) } },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(end = 8.dp, top = 8.dp),
+                        .padding(end = RAIL_END_MARGIN, top = 8.dp),
                 )
             }
             }

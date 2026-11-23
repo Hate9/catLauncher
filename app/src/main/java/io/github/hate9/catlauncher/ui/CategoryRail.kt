@@ -14,6 +14,9 @@ package io.github.hate9.catlauncher.ui
 
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -50,6 +53,9 @@ import androidx.compose.ui.unit.sp
 /** Width the list reserves on the right so row labels stay clear of the rail. */
 val RAIL_RESERVED_WIDTH = 56.dp
 
+/** Gap between the rail and the screen edge. */
+val RAIL_END_MARGIN = 8.dp
+
 /** One rail entry: an icon when the category has one, otherwise its initial letter. */
 data class RailEntry(val name: String, val icon: ImageVector?) {
     val initial: String get() = name.trim().firstOrNull()?.uppercase() ?: "?"
@@ -70,15 +76,16 @@ fun CategoryRail(
 ) {
     val haptic = LocalHapticFeedback.current
     val latestSelect by rememberUpdatedState(onSelect)
-    // Vertical bounds of each entry, in the rail's own coordinates, for hit-testing a scrub.
-    val bounds = remember { mutableStateOf(FloatArray(0)) }
+    // Vertical bounds of each entry in the rail's coordinates, each entry keeping its own slot
+    // up to date, so a partial relayout never leaves stale rows behind.
+    val bounds = remember(entries.size) { HashMap<Int, Pair<Float, Float>>() }
     var last by remember { mutableStateOf(-1) }
 
     fun indexAt(y: Float): Int {
-        val b = bounds.value
-        if (b.isEmpty()) return -1
-        for (i in 0 until b.size / 2) if (y >= b[i * 2] && y < b[i * 2 + 1]) return i
-        return if (y < b[0]) 0 else b.size / 2 - 1
+        if (bounds.isEmpty()) return -1
+        bounds.entries.firstOrNull { (_, b) -> y >= b.first && y < b.second }?.let { return it.key }
+        // Between or outside rows: the nearest row centre.
+        return bounds.entries.minByOrNull { (_, b) -> kotlin.math.abs((b.first + b.second) / 2f - y) }?.key ?: -1
     }
 
     Column(
@@ -88,7 +95,17 @@ fun CategoryRail(
             // (the parent composites offscreen), so dividers stop at the rail like an opaque
             // background would hide them, but the wallpaper still shows through.
             .drawBehind {
-                drawRoundRect(Color.Black, cornerRadius = CornerRadius(20.dp.toPx()), blendMode = BlendMode.Clear)
+                // Extends past the rail to the screen edge so no divider tail shows on its right.
+                val r = CornerRadius(20.dp.toPx())
+                val path = Path().apply {
+                    addRoundRect(
+                        RoundRect(
+                            Rect(0f, 0f, size.width + RAIL_END_MARGIN.toPx() + 2f, size.height),
+                            topLeft = r, topRight = CornerRadius.Zero, bottomRight = CornerRadius.Zero, bottomLeft = r,
+                        )
+                    )
+                }
+                drawPath(path, Color.Black, blendMode = BlendMode.Clear)
             }
             .verticalScroll(rememberScrollState())
             .padding(vertical = 6.dp)
@@ -114,15 +131,13 @@ fun CategoryRail(
                 }
             },
     ) {
-        val arr = FloatArray(entries.size * 2)
         entries.forEachIndexed { i, entry ->
             val active = i == current || i == last
             val color = if (active) textColor else textColor.copy(alpha = 0.75f)
             val cell = Modifier
                 .onGloballyPositioned { c ->
                     val top = c.positionInParent().y
-                    arr[i * 2] = top; arr[i * 2 + 1] = top + c.size.height
-                    if (i == entries.lastIndex) bounds.value = arr.copyOf()
+                    bounds[i] = top to top + c.size.height
                 }
                 .align(Alignment.CenterHorizontally)
                 .padding(vertical = 6.dp)
