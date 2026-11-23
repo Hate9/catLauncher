@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
  * so entries must keep their names once released; add new ones at the end of a group.
  */
 object CategoryIcons {
+    val home: ImageVector = Icons.Rounded.Home
     val favorites: ImageVector = Icons.Rounded.Star
     val hidden: ImageVector = Icons.Rounded.VisibilityOff
 

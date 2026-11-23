@@ -317,11 +317,27 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                 modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
             )
             val railVisible = config.showRail && query.isBlank() && drag.draggingKey == null
-            val headerIndices = remember(shown) { shown.withIndex().filter { it.value is Row.Header }.map { it.index } }
-            val currentHeader by remember(headerIndices) {
+            // Rail targets: a home entry for the very top, then each header. Favorites only earns
+            // its own entry when it sits a good way below the top (six rows of widgets or more),
+            // since otherwise home already lands on it.
+            val railTargets = remember(shown, config.widgets) {
+                val rowDp = LauncherViewModel.ICON_DP + 10
+                val widgetsDp = config.widgets.sumOf { it.heightDp + 16 }
+                val targets = ArrayList<Pair<Int, RailEntry>>()
+                targets += 0 to RailEntry("Top", CategoryIcons.home)
+                shown.forEachIndexed { index, row ->
+                    if (row !is Row.Header) return@forEachIndexed
+                    val c = row.category
+                    if (c.id == FAVORITES_ID && widgetsDp < 6 * rowDp) return@forEachIndexed
+                    targets += index to RailEntry(c.name, categoryIcon(c))
+                }
+                targets
+            }
+            val currentTarget by remember(railTargets) {
                 derivedStateOf {
                     val first = listState.firstVisibleItemIndex
-                    headerIndices.indexOfLast { it <= first }.coerceAtLeast(0)
+                    if (first == 0 && listState.firstVisibleItemScrollOffset == 0) 0
+                    else railTargets.indexOfLast { it.first <= first }.coerceAtLeast(0)
                 }
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -382,13 +398,13 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                     }
                 }
             }
-            if (railVisible && headerIndices.size > 1) {
+            if (railVisible && railTargets.size > 2) {
                 CategoryRail(
-                    entries = headerIndices.map { val c = (shown[it] as Row.Header).category; RailEntry(c.name, categoryIcon(c)) },
-                    current = currentHeader,
+                    entries = railTargets.map { it.second },
+                    current = currentTarget,
                     textColor = launcherTextColor(),
                     textStyle = launcherTextStyle(),
-                    onSelect = { i -> scope.launch { listState.scrollToItem(headerIndices[i]) } },
+                    onSelect = { i -> scope.launch { listState.scrollToItem(railTargets[i].first) } },
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = 6.dp)
