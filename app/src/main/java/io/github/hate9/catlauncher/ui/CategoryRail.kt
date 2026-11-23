@@ -17,7 +17,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -40,15 +40,19 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /** Width the list reserves on the right so row labels stay clear of the rail. */
-val RAIL_RESERVED_WIDTH = 96.dp
+val RAIL_RESERVED_WIDTH = 56.dp
 
-/** One rail entry: an icon when the category has one, otherwise its name. */
-data class RailEntry(val name: String, val icon: ImageVector?)
+/** One rail entry: an icon when the category has one, otherwise its initial letter. */
+data class RailEntry(val name: String, val icon: ImageVector?) {
+    val initial: String get() = name.trim().firstOrNull()?.uppercase() ?: "?"
+}
 
 /**
  * A stack of category names on the right edge. Tap one to jump to it; drag along the stack to
@@ -78,8 +82,8 @@ fun CategoryRail(
 
     Column(
         modifier
-            .widthIn(max = RAIL_RESERVED_WIDTH - 8.dp)
-            .background(textColor.copy(alpha = 0.10f), RoundedCornerShape(14.dp))
+            .width(RAIL_RESERVED_WIDTH - 16.dp)
+            .background(textColor.copy(alpha = 0.10f), RoundedCornerShape(20.dp))
             .verticalScroll(rememberScrollState())
             .padding(vertical = 6.dp)
             .pointerInput(entries) {
@@ -114,18 +118,19 @@ fun CategoryRail(
                     arr[i * 2] = top; arr[i * 2 + 1] = top + c.size.height
                     if (i == entries.lastIndex) bounds.value = arr.copyOf()
                 }
-                .padding(horizontal = 10.dp, vertical = 5.dp)
+                .align(Alignment.CenterHorizontally)
+                .padding(vertical = 6.dp)
             if (entry.icon != null) {
-                Icon(entry.icon, contentDescription = entry.name, tint = color, modifier = cell.align(Alignment.CenterHorizontally).size(if (active) 24.dp else 21.dp))
+                Icon(entry.icon, contentDescription = entry.name, tint = color, modifier = cell.size(if (active) 26.dp else 22.dp))
             } else {
                 Text(
-                    text = entry.name,
+                    text = entry.initial,
                     color = color,
                     style = textStyle,
-                    fontSize = if (active) 13.sp else 12.sp,
+                    fontSize = if (active) 17.sp else 15.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = cell,
+                    modifier = cell.semantics { contentDescription = entry.name },
                 )
             }
         }

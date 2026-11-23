@@ -318,7 +318,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
             )
             val railVisible = config.showRail && query.isBlank() && drag.draggingKey == null
             // Rail targets: a home entry for the very top, then each header. Favorites only earns
-            // its own entry when it sits a good way below the top (six rows of widgets or more),
+            // its own entry when it sits a good way below the top (eight rows of widgets or more),
             // since otherwise home already lands on it.
             val railTargets = remember(shown, config.widgets) {
                 val rowDp = LauncherViewModel.ICON_DP + 10
@@ -328,7 +328,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                 shown.forEachIndexed { index, row ->
                     if (row !is Row.Header) return@forEachIndexed
                     val c = row.category
-                    if (c.id == FAVORITES_ID && widgetsDp < 6 * rowDp) return@forEachIndexed
+                    if (c.id == FAVORITES_ID && widgetsDp < 8 * rowDp) return@forEachIndexed
                     targets += index to RailEntry(c.name, categoryIcon(c))
                 }
                 targets
