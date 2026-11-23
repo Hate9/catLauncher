@@ -104,6 +104,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -371,7 +372,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
             ) {
                 items(shown, key = { it.key }) { row ->
                     when (row) {
-                        is Row.Widget -> WidgetRow(row, widgets, vm)
+                        is Row.Widget -> WidgetRow(row, widgets, vm, endInset = if (railVisible) RAIL_RESERVED_WIDTH else 0.dp)
                         is Row.Header -> HeaderRow(row, Modifier.animateItem(), endInset = if (railVisible) RAIL_RESERVED_WIDTH else 0.dp) { anchor ->
                             menu = MenuState.ForHeader(row.category, anchor)
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -642,6 +643,8 @@ private fun HeaderRow(row: Row.Header, modifier: Modifier, endInset: Dp = 0.dp, 
                 fontSize = 22.sp,
                 color = launcherTextColor(),
                 style = launcherTextStyle(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         Spacer(Modifier.height(2.dp))
@@ -670,15 +673,15 @@ private fun EntryRow(row: Row.Entry, showIcon: Boolean, modifier: Modifier, endI
             else Spacer(Modifier.size(LauncherViewModel.ICON_DP.dp))
             Spacer(Modifier.width(12.dp))
         }
-        Text(text = row.label, fontSize = 20.sp, color = launcherTextColor(), style = launcherTextStyle(), maxLines = 1)
+        Text(text = row.label, fontSize = 20.sp, color = launcherTextColor(), style = launcherTextStyle(), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
-private fun LazyItemScope.WidgetRow(row: Row.Widget, widgets: WidgetController?, vm: LauncherViewModel) {
+private fun LazyItemScope.WidgetRow(row: Row.Widget, widgets: WidgetController?, vm: LauncherViewModel, endInset: Dp = 0.dp) {
     val context = LocalContext.current
-    val widthDp = remember { (context.resources.displayMetrics.widthPixels / context.resources.displayMetrics.density).toInt() - 32 }
-    val view = remember(row.entry.appWidgetId, row.entry.heightDp) { widgets?.viewFor(row.entry, widthDp) }
+    val widthDp = remember(endInset) { (context.resources.displayMetrics.widthPixels / context.resources.displayMetrics.density).toInt() - 32 - endInset.value.toInt() }
+    val view = remember(row.entry.appWidgetId, row.entry.heightDp, widthDp) { widgets?.viewFor(row.entry, widthDp) }
     if (view == null) {
         // Provider currently unavailable; WidgetController.startListening prunes widgets that are really gone.
         Spacer(Modifier.height(1.dp))
@@ -688,7 +691,7 @@ private fun LazyItemScope.WidgetRow(row: Row.Widget, widgets: WidgetController?,
         factory = { (view.parent as? android.view.ViewGroup)?.removeView(view); view },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(start = 16.dp, end = 16.dp + endInset, top = 8.dp, bottom = 8.dp)
             .height(row.entry.heightDp.dp),
     )
 }
