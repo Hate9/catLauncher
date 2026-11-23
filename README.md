@@ -60,3 +60,11 @@ package `io.github.hate9.catlauncher`, target Broadcast Receiver.
 ## License
 
 GPL-3.0. Copyright (C) 2025 Timothy Choi (tmtLauncher), (C) 2026 catLauncher contributors.
+
+## A note on how this was made
+
+This project is entirely vibecoded: the code was written by an AI assistant (Claude) working from
+feature requests, and no line of it was typed by hand. It was, however, directed by an experienced
+software developer who tests every build on a real device and reviews the behaviour, so the
+features described above are the ones that actually work. Take that as the context for reading
+the source.
