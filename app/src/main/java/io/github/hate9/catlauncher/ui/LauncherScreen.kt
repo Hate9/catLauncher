@@ -88,6 +88,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
@@ -340,7 +342,13 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                     else railTargets.indexOfLast { it.first <= first }.coerceAtLeast(0)
                 }
             }
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    // Offscreen so the rail's clear blend cuts through the list instead of the window.
+                    .then(if (railVisible) Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen } else Modifier)
+            ) {
             LazyColumn(
                 state = listState,
                 flingBehavior = rememberHeaderSnapFlingBehavior(listState, headerTopGapPx = with(density) { HEADER_TOP_GAP.toPx() }, rows = { shown }) { forward ->
@@ -350,10 +358,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                         else -> true
                     }
                 },
-                contentPadding = PaddingValues(
-                    end = if (railVisible) RAIL_RESERVED_WIDTH else 0.dp,
-                    bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
-                ),
+                contentPadding = PaddingValues(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
                 modifier = Modifier
                     .fillMaxSize()
                     .pointerInput(drag) { trackDrag(drag) }
@@ -367,7 +372,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                 items(shown, key = { it.key }) { row ->
                     when (row) {
                         is Row.Widget -> WidgetRow(row, widgets, vm)
-                        is Row.Header -> HeaderRow(row, Modifier.animateItem()) { anchor ->
+                        is Row.Header -> HeaderRow(row, Modifier.animateItem(), endInset = if (railVisible) RAIL_RESERVED_WIDTH else 0.dp) { anchor ->
                             menu = MenuState.ForHeader(row.category, anchor)
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
@@ -376,6 +381,7 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                             EntryRow(
                                 row = row,
                                 showIcon = config.showIcons,
+                                endInset = if (railVisible) RAIL_RESERVED_WIDTH else 0.dp,
                                 modifier = if (dragged) Modifier
                                     .zIndex(1f)
                                     .graphicsLayer {
@@ -406,9 +412,8 @@ fun LauncherScreen(vm: LauncherViewModel, widgets: WidgetController?, settingsRe
                     textStyle = launcherTextStyle(),
                     onSelect = { i -> scope.launch { listState.scrollToItem(railTargets[i].first) } },
                     modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 6.dp)
-                        .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
+                        .align(Alignment.TopEnd)
+                        .padding(end = 8.dp, top = 8.dp),
                 )
             }
             }
@@ -614,7 +619,7 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onGo: () -
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun HeaderRow(row: Row.Header, modifier: Modifier, onLongClick: (Offset) -> Unit) {
+private fun HeaderRow(row: Row.Header, modifier: Modifier, endInset: Dp = 0.dp, onLongClick: (Offset) -> Unit) {
     var origin by remember { mutableStateOf(Offset.Zero) }
     var height by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
@@ -627,7 +632,7 @@ private fun HeaderRow(row: Row.Header, modifier: Modifier, onLongClick: (Offset)
         Spacer(Modifier.height(HEADER_TOP_GAP))
         HorizontalDivider(color = launcherTextColor().copy(alpha = 0.4f))
         Spacer(Modifier.height(8.dp))
-        Row(Modifier.padding(horizontal = ROW_INSET), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(start = ROW_INSET, end = ROW_INSET + endInset), verticalAlignment = Alignment.CenterVertically) {
             categoryIcon(row.category)?.let { icon ->
                 androidx.compose.material3.Icon(icon, contentDescription = null, tint = launcherTextColor(), modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(8.dp))
@@ -645,7 +650,7 @@ private fun HeaderRow(row: Row.Header, modifier: Modifier, onLongClick: (Offset)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EntryRow(row: Row.Entry, showIcon: Boolean, modifier: Modifier, onClick: () -> Unit, onLongClick: (Offset) -> Unit) {
+private fun EntryRow(row: Row.Entry, showIcon: Boolean, modifier: Modifier, endInset: Dp = 0.dp, onClick: () -> Unit, onLongClick: (Offset) -> Unit) {
     var origin by remember { mutableStateOf(Offset.Zero) }
     var height by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
@@ -657,7 +662,7 @@ private fun EntryRow(row: Row.Entry, showIcon: Boolean, modifier: Modifier, onCl
                 onClick = onClick,
                 onLongClick = { onLongClick(Offset(origin.x + with(density) { ROW_INSET.toPx() }, origin.y + height)) },
             )
-            .padding(horizontal = ROW_INSET, vertical = 5.dp),
+            .padding(start = ROW_INSET, end = ROW_INSET + endInset, top = 5.dp, bottom = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showIcon) {

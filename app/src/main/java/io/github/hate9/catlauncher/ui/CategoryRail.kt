@@ -12,14 +12,15 @@ You should have received a copy of the GNU General Public License along with thi
 
 package io.github.hate9.catlauncher.ui
 
-import androidx.compose.foundation.background
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.size
@@ -83,7 +84,12 @@ fun CategoryRail(
     Column(
         modifier
             .width(RAIL_RESERVED_WIDTH - 16.dp)
-            .background(textColor.copy(alpha = 0.10f), RoundedCornerShape(20.dp))
+            // No fill: instead knock a rounded hole through whatever the list drew underneath
+            // (the parent composites offscreen), so dividers stop at the rail like an opaque
+            // background would hide them, but the wallpaper still shows through.
+            .drawBehind {
+                drawRoundRect(Color.Black, cornerRadius = CornerRadius(20.dp.toPx()), blendMode = BlendMode.Clear)
+            }
             .verticalScroll(rememberScrollState())
             .padding(vertical = 6.dp)
             .pointerInput(entries) {
